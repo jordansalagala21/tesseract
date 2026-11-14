@@ -1,7 +1,12 @@
 import { EntryPoints } from "@/components/home/EntryPoints";
 import { ExampleOpportunity } from "@/components/home/ExampleOpportunity";
 import { HeroBeforeAfter } from "@/components/home/HeroBeforeAfter";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { SiteFooter } from "@/components/site/PageShell";
 import { SiteHeader } from "@/components/site/SiteHeader";
+import { cn } from "@/lib/utils";
 
 // Counts verified from the CoStar hackathon kit (docs/DATA_SOURCES.md).
 const proofPoints = [
@@ -12,44 +17,61 @@ const proofPoints = [
 
 export default function Home() {
   return (
-    <div className="mx-auto flex w-full max-w-page flex-1 flex-col px-4 sm:px-8">
+    <>
       <SiteHeader />
-
-      <main className="flex flex-1 flex-col gap-20 py-10 lg:gap-28 lg:py-16">
-        <section className="flex flex-col gap-8 lg:gap-10">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-end lg:gap-14">
-            <h1 className="font-heading text-4xl leading-none font-bold tracking-tight text-balance [font-stretch:112%]">
-              Discover what spaces could become.
-            </h1>
-            <div>
-              <p className="max-w-measure text-lg leading-relaxed text-muted-foreground">
-                Tesseract reads CoStar listings, walks the Matterport 3D scan and studies Vexcel aerial images, then
-                ranks the uses that fit a space, with the evidence for each one.
-              </p>
-              <dl className="mt-6 grid max-w-measure grid-cols-3 gap-4 border-t pt-5">
-                {proofPoints.map((p) => (
-                  <div key={p.label}>
-                    <dt className="sr-only">{p.label}</dt>
-                    <dd className="font-heading text-2xl leading-none font-bold tabular-nums [font-stretch:112%]">{p.value}</dd>
-                    <dd className="mt-1.5 text-sm leading-snug text-muted-foreground">{p.label}</dd>
-                  </div>
-                ))}
-              </dl>
-              <p className="mt-3 text-xs text-muted-foreground">Counts from the CoStar hackathon dataset.</p>
+      <div className="mx-auto flex w-full max-w-page flex-1 flex-col px-4 sm:px-8">
+        <main className="flex flex-1 flex-col gap-20 pt-10 pb-20 sm:pt-14 lg:gap-28">
+          {/* First screen: what Tesseract does, the one action to take, and the before/after proof. */}
+          <section className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-14">
+            <div className="flex flex-col gap-8">
+              <div>
+                <h1 className="font-heading text-4xl font-bold tracking-tight text-balance [font-stretch:112%]">
+                  Discover what spaces could become.
+                </h1>
+                <p className="mt-5 max-w-measure text-lg text-muted-foreground">
+                  Tesseract reads CoStar listings, walks the Matterport 3D scan and studies Vexcel aerial images, then
+                  ranks the uses that fit a space, with the evidence for each one.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3">
+                <Link href="/properties" className={cn(buttonVariants(), "h-11 w-fit px-5 text-base")}>
+                  Find a property
+                  <ArrowRight className="size-4" aria-hidden="true" />
+                </Link>
+                <p className="text-base text-muted-foreground">
+                  Or start from{" "}
+                  <Link href="/invest" className="font-medium text-foreground underline underline-offset-4 hover:text-primary">
+                    your budget
+                  </Link>{" "}
+                  or{" "}
+                  <Link href="/start" className="font-medium text-foreground underline underline-offset-4 hover:text-primary">
+                    a business idea
+                  </Link>
+                  .
+                </p>
+              </div>
+              <div>
+                <dl className="grid max-w-measure grid-cols-3 gap-4 border-t pt-5">
+                  {proofPoints.map((p) => (
+                    <div key={p.label}>
+                      <dt className="sr-only">{p.label}</dt>
+                      <dd className="font-heading text-2xl font-bold tabular-nums [font-stretch:112%]">{p.value}</dd>
+                      <dd className="mt-1.5 text-sm text-muted-foreground">{p.label}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="mt-3 text-xs text-muted-foreground">Counts from the CoStar hackathon dataset.</p>
+              </div>
             </div>
-          </div>
 
-          <HeroBeforeAfter />
-        </section>
+            <HeroBeforeAfter />
+          </section>
 
-        <EntryPoints />
-        <ExampleOpportunity />
-      </main>
-
-      <footer className="border-t py-6 text-sm leading-relaxed text-muted-foreground">
-        Covers advertised space in Houston and Los Angeles from the CoStar hackathon dataset. Advertised availability
-        is not confirmed vacancy.
-      </footer>
-    </div>
+          <EntryPoints />
+          <ExampleOpportunity />
+        </main>
+      </div>
+      <SiteFooter />
+    </>
   );
 }

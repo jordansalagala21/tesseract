@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Market } from "@/lib/contracts";
 import { PropertyResults, PropertySearchForm } from "@/components/property/PropertySearch";
 import { SampleDataBanner } from "@/components/property/SampleDataBanner";
+import { PageHeader } from "@/components/site/PageShell";
 import { searchProperties } from "./property-data";
 
 export const metadata: Metadata = { title: "Find a property | Tesseract" };
@@ -15,12 +16,10 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
 
   return (
     <>
-      <div>
-        <h1 className="font-heading text-3xl leading-tight font-bold tracking-tight">Find a property</h1>
-        <p className="mt-2 max-w-measure text-lg leading-relaxed text-muted-foreground">
-          Search commercial buildings in Houston and Los Angeles, then open one to see its advertised spaces.
-        </p>
-      </div>
+      <PageHeader
+        title="Find a property"
+        description="Search commercial buildings in Houston and Los Angeles, then open one to see its advertised spaces."
+      />
       <PropertySearchForm q={q} market={market} />
       {sample && <SampleDataBanner />}
       <PropertyResults items={data.items} total={data.total} q={q} />

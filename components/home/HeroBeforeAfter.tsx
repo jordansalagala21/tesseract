@@ -94,7 +94,7 @@ export function HeroBeforeAfter() {
     <figure className="relative overflow-hidden rounded-2xl border bg-muted">
       <div
         ref={frame}
-        className={cn("relative aspect-[4/3] touch-pan-y select-none sm:aspect-[16/9]", hasAfter && "cursor-ew-resize")}
+        className={cn("relative aspect-[4/3] touch-pan-y select-none", hasAfter && "cursor-ew-resize")}
         onPointerDown={(e) => {
           if (!hasAfter) return;
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -110,7 +110,7 @@ export function HeroBeforeAfter() {
           alt={BEFORE.alt}
           fill
           priority
-          sizes="(min-width: 1280px) 1200px, 100vw"
+          sizes="(min-width: 1024px) 640px, 100vw"
           className="object-cover"
           draggable={false}
         />
@@ -128,7 +128,7 @@ export function HeroBeforeAfter() {
               src={use.after!}
               alt={use.alt}
               fill
-              sizes="(min-width: 1280px) 1200px, 100vw"
+              sizes="(min-width: 1024px) 640px, 100vw"
               className="object-cover"
               draggable={false}
             />

@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
 import { PropertyFacts, SpaceList, TenantList } from "@/components/property/PropertyDetail";
+import { PageHeader } from "@/components/site/PageShell";
 import { SampleDataBanner } from "@/components/property/SampleDataBanner";
 import { AerialViewer } from "@/components/viewer/AerialViewer";
 import { MatterportViewer } from "@/components/viewer/MatterportViewer";
@@ -19,29 +18,23 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
 
   return (
     <>
-      <div>
-        <Link
-          href="/properties"
-          className="-ml-1 inline-flex items-center gap-0.5 rounded-md pr-1 text-lg text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <ChevronLeft className="size-5" aria-hidden="true" />
-          Properties
-        </Link>
-        <h1 className="mt-4 font-heading text-3xl leading-tight font-bold tracking-tight text-balance">
-          {p.name ?? p.address.street}
-        </h1>
-        <p className="mt-1 text-lg text-muted-foreground">
-          {p.name ? `${p.address.street}, ` : ""}
-          {p.address.city}, {p.address.state} {p.address.postcode}
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: "/properties", label: "Properties" }}
+        title={p.name ?? p.address.street}
+        description={`${p.name ? `${p.address.street}, ` : ""}${p.address.city}, ${p.address.state} ${p.address.postcode ?? ""}`.trim()}
+      />
       {sample && <SampleDataBanner />}
-      {/* key: a suite's "View 3D tour" link changes ?model=, which remounts the viewer on that scan */}
-      <MatterportViewer key={String(sp.model)} tours={tours} initialModelId={typeof sp.model === "string" ? sp.model : undefined} />
-      <AerialViewer images={detail.aerial} />
-      <PropertyFacts property={p} />
+      {/* Tour and the building facts side by side on wide screens, so both are in the first view. */}
+      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:gap-8">
+        {/* key: a suite's "View 3D tour" link changes ?model=, which remounts the viewer on that scan */}
+        <MatterportViewer key={String(sp.model)} tours={tours} initialModelId={typeof sp.model === "string" ? sp.model : undefined} />
+        <PropertyFacts property={p} />
+      </div>
       <SpaceList spaces={spaces.items} note={spaces.availabilityNote} />
-      <TenantList tenants={detail.currentTenants} recorded={p.counts.currentTenants} sample={sample} />
+      <div className="grid items-start gap-10 lg:grid-cols-2 lg:gap-8">
+        <AerialViewer images={detail.aerial} />
+        <TenantList tenants={detail.currentTenants} recorded={p.counts.currentTenants} sample={sample} />
+      </div>
     </>
   );
 }

@@ -41,10 +41,10 @@ export function PropertyFacts({ property: p }: { property: Property }) {
   ];
 
   return (
-    <section aria-labelledby="facts-heading">
+    <section aria-labelledby="facts-heading" className="@container">
       <SectionHeading id="facts-heading">Building</SectionHeading>
       <div className="rounded-2xl border bg-card">
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-5 p-5 sm:grid-cols-3">
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-5 p-5 @xl:grid-cols-3">
           {facts.map(([label, value]) => (
             <div key={label} className="min-w-0">
               <dt className="text-sm text-muted-foreground">{label}</dt>

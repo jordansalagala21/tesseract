@@ -1,15 +1,24 @@
+import { Suspense } from "react";
 import Link from "next/link";
+import { MainNav, NavLinks } from "./MainNav";
 
+/** Full-width bar with the brand and the three ways into Tesseract. */
 export function SiteHeader() {
   return (
-    <header className="flex h-16 items-center">
-      <Link
-        href="/"
-        className="-mx-1.5 flex items-center gap-2.5 rounded-md px-1.5 py-1 text-lg font-semibold tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <BrandMark />
-        Tesseract
-      </Link>
+    <header className="border-b bg-background">
+      <div className="mx-auto flex min-h-16 w-full max-w-page flex-wrap items-center justify-between gap-x-6 px-4 sm:px-8">
+        <Link
+          href="/"
+          className="-mx-2 flex h-11 items-center gap-2.5 rounded-lg px-2 text-lg font-semibold tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <BrandMark />
+          Tesseract
+        </Link>
+        {/* The current-page marker needs the URL, which streams in; the links themselves render at once. */}
+        <Suspense fallback={<NavLinks active={null} />}>
+          <MainNav />
+        </Suspense>
+      </div>
     </header>
   );
 }

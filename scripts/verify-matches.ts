@@ -2,15 +2,21 @@
  * DATA-06 — verify the CoStar ↔ Matterport ↔ Vexcel links for the demo properties.
  * OWNER: Developer 2.
  *
- * Run:
- *   node --conditions=react-server --env-file=.env.local node_modules/tsx/dist/cli.mjs scripts/verify-matches.ts
+ * Run (no npm script: package.json is Dev 1's, per CLAUDE.md §5):
+ *   node --env-file=.env.local node_modules/tsx/dist/cli.mjs \
+ *     --tsconfig scripts/tsconfig.verify.json scripts/verify-matches.ts
  *
  * Why those flags:
- *   --conditions=react-server  lib/data/* modules import "server-only", which throws unless the
- *                              loader resolves React's server condition. Next does this for us;
- *                              a standalone script must ask for it.
- *   --env-file=.env.local      tsx does not read .env.local, and the Matterport and Vexcel
- *                              calls need credentials. Nothing is printed from that file.
+ *   --tsconfig scripts/tsconfig.verify.json
+ *       lib/data/* modules import "server-only", which throws outside a framework server build.
+ *       This config points that specifier at an empty stub. `--conditions=react-server` does
+ *       NOT work in its place: tsx compiles the imported .ts files to CJS, and export
+ *       conditions only apply to ESM resolution. Scoping it to this one script is also what
+ *       keeps app code bound to the real module, which is the actual guarantee that these
+ *       files never reach a client bundle.
+ *   --env-file=.env.local
+ *       tsx does not read it, and the Matterport and Vexcel calls need credentials.
+ *       Nothing from that file is printed.
  *
  * This script REPORTS. It never asserts a link that the data does not support: an unmatched
  * suite prints as unmatched, and a missing coordinate prints as unknown rather than passing.

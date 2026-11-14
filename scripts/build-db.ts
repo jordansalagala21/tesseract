@@ -16,6 +16,7 @@
  */
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { DuckDBInstance, type DuckDBConnection } from "@duckdb/node-api";
 import { decodeEnum, loadKitEnums, type EnumMap } from "@/lib/data/enums";
 
@@ -339,4 +340,47 @@ export async function buildDb(options: BuildDbOptions): Promise<BuildDbResult> {
     connection.closeSync();
     instance.closeSync();
   }
+}
+
+// --------------------------------------------------------------------------- CLI
+
+/**
+ * `npm run db:build`.
+ *
+ * tsx does not read `.env.local` the way `next` does, so load it here. A missing file is fine:
+ * the variables may come from the shell (which is how CI and the tests supply them).
+ */
+async function main(): Promise<void> {
+  try {
+    process.loadEnvFile(".env.local");
+  } catch {
+    // No .env.local — fall back to the ambient environment.
+  }
+
+  const kitDir = process.env.COSTAR_KIT_DIR?.trim();
+  if (!kitDir) {
+    throw new Error(
+      "COSTAR_KIT_DIR is not set. Point it at the unzipped CoStar kit (see .env.example) — the sponsor data lives outside this repo.",
+    );
+  }
+  const dbPath = process.env.DUCKDB_PATH?.trim() || "./data/tesseract.duckdb";
+
+  const { tables, elapsedMs } = await buildDb({
+    kitDir,
+    dbPath,
+    log: (message) => console.log(`  ${message}`),
+  });
+
+  console.log(`\nBuilt ${dbPath} from ${kitDir} in ${(elapsedMs / 1000).toFixed(1)}s\n`);
+  for (const [table, count] of Object.entries(tables)) {
+    console.log(`  ${table.padEnd(20)} ${count.toLocaleString("en-US").padStart(8)} rows`);
+  }
+  console.log("\nAdvertised availability is not confirmed vacancy. Rents are $/SF/yr; keep serviceType.");
+}
+
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+  main().catch((error: unknown) => {
+    console.error(`\ndb:build failed: ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  });
 }

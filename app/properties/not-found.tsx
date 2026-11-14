@@ -1,13 +1,20 @@
 import Link from "next/link";
+import { SearchX } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/states";
 
 export default function PropertyNotFound() {
   return (
-    <div className="rounded-2xl border bg-card px-5 py-8 text-center">
-      <p className="text-lg font-semibold">No property with that ID</p>
-      <p className="mt-1 text-base text-muted-foreground">It isn’t in the CoStar dataset Tesseract covers.</p>
-      <Link href="/properties" className="mt-4 inline-block rounded-md text-lg font-medium text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        Search properties
-      </Link>
-    </div>
+    <EmptyState
+      icon={SearchX}
+      title="We couldn’t find that property"
+      action={
+        <Link href="/properties" className={buttonVariants({ variant: "outline" })}>
+          Search properties
+        </Link>
+      }
+    >
+      It isn’t in the CoStar dataset Tesseract covers (Houston and Los Angeles).
+    </EmptyState>
   );
 }

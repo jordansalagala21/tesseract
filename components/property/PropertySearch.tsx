@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ChevronDown, ChevronRight, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, Search, SearchX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { inputClass } from "@/components/forms/fields";
 import type { Market, PropertySummary } from "@/lib/contracts";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/states";
 import { Chip } from "./Chip";
 import { formatNumber, formatSf, humanize } from "./format";
 
@@ -43,13 +44,17 @@ export function PropertySearchForm({ q, market }: { q?: string; market?: Market 
 export function PropertyResults({ items, total, q }: { items: PropertySummary[]; total: number; q?: string }) {
   if (items.length === 0) {
     return (
-      <div className="rounded-2xl border bg-card px-5 py-8 text-center">
-        <p className="text-lg font-semibold">{q ? `No properties match “${q}”` : "No properties found"}</p>
-        <p className="mt-1 text-base text-muted-foreground">Try a street or building name, or search all markets.</p>
-        <Link href="/properties" className="mt-4 inline-block rounded-md text-lg font-medium text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          Show all properties
-        </Link>
-      </div>
+      <EmptyState
+        title={q ? `No properties match “${q}”` : "No properties found"}
+        icon={SearchX}
+        action={
+          <Link href="/properties" className={buttonVariants({ variant: "outline" })}>
+            Show all properties
+          </Link>
+        }
+      >
+        Try a street or building name, or search all markets.
+      </EmptyState>
     );
   }
 

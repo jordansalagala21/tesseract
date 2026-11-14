@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Box, Loader2 } from "lucide-react";
+import { EmptyState } from "@/components/ui/states";
 import { cn } from "@/lib/utils";
 import { Segmented } from "@/components/ui/segmented";
 import { formatSf } from "@/components/property/format";
@@ -40,12 +42,19 @@ export function MatterportViewer({ tours, initialModelId }: { tours: TourOption[
       </div>
 
       {!tour ? (
-        <p className="rounded-2xl border bg-card p-5 text-base text-muted-foreground sm:p-6">
-          No Matterport scan is linked to this property in the CoStar data, so there’s no 3D tour.
-        </p>
+        <EmptyState title="No 3D tour for this property" icon={Box}>
+          The CoStar data doesn’t link a Matterport scan to this building.
+        </EmptyState>
       ) : (
         <div className="overflow-hidden rounded-2xl border bg-card">
           <div className="relative aspect-[4/3] bg-muted sm:aspect-video">
+            {/* Sits under the frame: visible until Matterport has drawn its viewer. */}
+            <div className="absolute inset-0 grid place-items-center text-base text-muted-foreground" aria-hidden="true">
+              <span className="flex items-center gap-2">
+                <Loader2 className="size-4 motion-safe:animate-spin" />
+                Loading 3D tour
+              </span>
+            </div>
             <iframe
               key={tour.modelId}
               src={tour.embedUrl}

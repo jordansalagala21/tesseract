@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { EmptyState } from "@/components/ui/states";
 import Image from "next/image";
 import { Expand, ImageOff, X } from "lucide-react";
 import type { AerialImagery } from "@/lib/contracts";
@@ -32,18 +33,18 @@ export function AerialViewer({ images }: { images: AerialImagery[] }) {
       </div>
 
       {!image ? (
-        <p className="rounded-2xl border bg-card p-5 text-base text-muted-foreground sm:p-6">
-          No Vexcel aerial image is available for this property yet.
-        </p>
+        <EmptyState title="No aerial image yet" icon={ImageOff}>
+          Vexcel imagery for this property isn’t available yet.
+        </EmptyState>
       ) : (
         <figure className="overflow-hidden rounded-2xl border bg-card">
           <div className={cn("relative bg-muted", !broken && "aspect-[4/3]")}>
             {broken ? (
               <div className="px-6 py-10 text-center">
                 <ImageOff className="mx-auto size-7 text-muted-foreground" aria-hidden="true" />
-                <p className="mt-3 text-lg font-semibold">Aerial image didn’t load</p>
+                <p className="mt-3 text-lg font-semibold">Aerial image unavailable</p>
                 <p className="mx-auto mt-1 max-w-md text-base text-muted-foreground">
-                  The imagery service isn’t reachable right now, so only the capture details are shown.
+                  The imagery service didn’t answer, so only the capture details are shown below.
                 </p>
               </div>
             ) : (

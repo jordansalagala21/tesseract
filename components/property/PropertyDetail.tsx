@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { DoorClosed, Users } from "lucide-react";
+import { EmptyState } from "@/components/ui/states";
 import type { AvailableSpace, Property } from "@/lib/contracts";
 import { PropertyDetailResponse } from "@/lib/contracts";
 import type { z } from "zod";
@@ -68,9 +70,9 @@ export function SpaceList({ spaces, note }: { spaces: AvailableSpace[]; note: st
       </SectionHeading>
       <p className="mb-3 text-base text-muted-foreground">{note}</p>
       {spaces.length === 0 ? (
-        <p className="rounded-2xl border bg-card p-5 text-base text-muted-foreground sm:p-6">
-          No spaces are advertised in the current CoStar listings for this property.
-        </p>
+        <EmptyState title="No advertised spaces" icon={DoorClosed}>
+          The current CoStar listings have no space advertised in this building.
+        </EmptyState>
       ) : (
         <ul className="overflow-hidden rounded-2xl border bg-card">
           {spaces.map((s, i) => {
@@ -122,11 +124,11 @@ export function TenantList({ tenants, recorded, sample }: { tenants: Tenant[]; r
         Current tenants
       </SectionHeading>
       {tenants.length === 0 ? (
-        <p className="rounded-2xl border bg-card p-5 text-base text-muted-foreground sm:p-6">
+        <EmptyState title={sample ? "Tenant names not shown yet" : "No current tenants"} icon={Users}>
           {sample
             ? `CoStar records ${recorded} current ${recorded === 1 ? "tenant" : "tenants"} here. Names appear once the property API is connected.`
-            : "No current tenants are recorded for this property."}
-        </p>
+            : "CoStar records no current tenants for this property."}
+        </EmptyState>
       ) : (
         <ul className="overflow-hidden rounded-2xl border bg-card">
           {tenants.map((t, i) => (

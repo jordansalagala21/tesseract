@@ -1,4 +1,6 @@
 import { useId } from "react";
+import { SearchX } from "lucide-react";
+import { EmptyState } from "@/components/ui/states";
 import type { Evidence, Opportunity, UserPersona } from "@/lib/contracts";
 import { Badge } from "@/components/ui/badge";
 import { Notice } from "@/components/ui/notice";
@@ -171,9 +173,9 @@ export function OpportunityReveal({
       </div>
 
       {opportunities.length === 0 ? (
-        <p className="rounded-2xl border bg-card p-5 text-base text-muted-foreground sm:p-6">
-          The agent didn’t find a use the evidence supports. Check the missing information in the Evidence Trail.
-        </p>
+        <EmptyState title="No use fits the evidence yet" icon={SearchX}>
+          Check the missing information in the Evidence Trail to see what the agent needed.
+        </EmptyState>
       ) : (
         <div className="flex flex-col gap-8">
           {groups.map((g) => (

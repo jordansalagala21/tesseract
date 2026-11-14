@@ -1,4 +1,5 @@
-import { Check, Circle, Loader2, Minus, X } from "lucide-react";
+import { Check, Circle, ListChecks, Loader2, Minus, X } from "lucide-react";
+import { EmptyState } from "@/components/ui/states";
 import type { AgentToolCall, AnalysisResponse, Evidence } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
 import { EvidenceChip } from "./EvidenceChip";
@@ -55,9 +56,9 @@ export function AgentTimeline({
       </div>
 
       {calls.length === 0 ? (
-        <p className="rounded-2xl border bg-card p-5 text-base text-muted-foreground sm:p-6">
+        <EmptyState title="No steps yet" icon={ListChecks}>
           {live ? "The agent is planning its first step." : "The agent didn’t run any tools for this analysis."}
-        </p>
+        </EmptyState>
       ) : (
         <ol className="rounded-2xl border bg-card px-4 py-2 sm:px-5">
           {calls.map((call, i) => {

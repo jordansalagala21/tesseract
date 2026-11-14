@@ -2,7 +2,12 @@ import { existsSync } from "node:fs";
 import { afterAll, describe, expect, test } from "vitest";
 import { PropertySearchQuery, PropertySearchResponse } from "@/lib/contracts";
 import { closeDb } from "@/lib/data/duckdb";
-import { searchProperties, searchTokens } from "@/lib/data/properties";
+import {
+  LIKE_ESCAPE_SQL,
+  SEARCH_HAYSTACK_SQL,
+  searchProperties,
+  searchTokens,
+} from "@/lib/data/properties";
 
 // These need the DuckDB built by `npm run db:build`, which CI has no sponsor data for.
 const dbPath = process.env.DUCKDB_PATH?.trim() || "./data/tesseract.duckdb";
@@ -123,6 +128,22 @@ describeDb("searchProperties (requires a built DuckDB)", () => {
       const short = await searchProperties(query({ q: "3201 Broadway", includeMultifamily: "true" }));
       expect(short.items.map((p) => p.id)).toContain(249138);
     });
+
+    // A backspace instead of a regex word boundary canonicalized the query side only, so
+    // anything CoStar stores in LONG form was unreachable unless its short form happened to be
+    // a prefix of it (st/street, ave, dr, n/north matched by substring luck). The first four
+    // below are that case and fail without the boundary; the last is the mirror image —
+    // stored short, typed long — which only needs the query side and always worked.
+    test.each([
+      ["20333 State Highway 249", 239683], // stored long, typed long
+      ["20333 State Hwy 249", 239683], // stored long, typed short
+      ["13401 North Freeway", 239654], // stored long, and in the name rather than the street
+      ["North Harris Parkway Center", 240056], // stored long: "pky" is not a prefix of "parkway"
+      ["7080 Hollywood Boulevard", 27212], // stored "Blvd", typed long
+    ])("finds %j whichever form of the suffix is typed", async (q, id) => {
+      const result = await searchProperties(query({ q, includeMultifamily: "true", limit: 100 }));
+      expect(result.items.map((p) => p.id)).toContain(id);
+    });
   });
 
   test("a single quote in the search text is not an injection", async () => {
@@ -155,5 +176,32 @@ describe("searchTokens", () => {
   test("returns no tokens for an empty or punctuation-only query", () => {
     expect(searchTokens("   ")).toEqual([]);
     expect(searchTokens("---")).toEqual([]);
+  });
+});
+
+/**
+ * Both halves of the match live in SQL strings, so a tokenizer test cannot reach them — and the
+ * behavioural tests above skip wherever the sponsor DuckDB is absent, which includes CI. These
+ * assert the text we actually send, and they run everywhere.
+ */
+describe("generated search SQL", () => {
+  test("canonicalizes the stored side with a word boundary, not a backspace character", () => {
+    expect(SEARCH_HAYSTACK_SQL).not.toContain("\u0008");
+    expect(SEARCH_HAYSTACK_SQL).toContain(String.raw`'\bstreet\b'`);
+    // A non-prefix suffix: this is the one that silently matched nothing before.
+    expect(SEARCH_HAYSTACK_SQL).toContain(String.raw`'\bhighway\b'`);
+  });
+
+  test("rewrites every suffix the tokenizer rewrites, so the two sides cannot drift", () => {
+    for (const long of ["street", "boulevard", "parkway", "freeway", "highway", "northwest"]) {
+      const short = searchTokens(long)[0];
+      expect(SEARCH_HAYSTACK_SQL).toContain(String.raw`'\b` + long + String.raw`\b', '` + short + "'");
+    }
+  });
+
+  test("keeps a real backslash as the LIKE escape character", () => {
+    expect(LIKE_ESCAPE_SQL).toBe(String.raw`ESCAPE '\'`);
+    // `ESCAPE ''` is accepted by DuckDB and then ignored, which is how this went unnoticed.
+    expect(LIKE_ESCAPE_SQL).not.toBe("ESCAPE ''");
   });
 });

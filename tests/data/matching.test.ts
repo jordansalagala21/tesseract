@@ -1,5 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { linkSuiteToModel, normalizeSuite, suiteFromCaption } from "@/lib/data/matching";
+import {
+  COORDINATE_TOLERANCE_M,
+  checkCoordinates,
+  distanceMeters,
+  linkSuiteToModel,
+  normalizeSuite,
+  suiteFromCaption,
+} from "@/lib/data/matching";
 
 describe("suiteFromCaption", () => {
   test("extracts the suite number from a CoStar caption", () => {
@@ -87,5 +94,55 @@ describe("normalizeSuite", () => {
 
   test("keeps a suite that is all zeros from becoming empty", () => {
     expect(normalizeSuite("0")).toBe("0");
+  });
+});
+
+describe("distanceMeters", () => {
+  test("is zero for the same point", () => {
+    expect(distanceMeters({ lat: 29.74587, lon: -95.375417 }, { lat: 29.74587, lon: -95.375417 })).toBeCloseTo(0, 6);
+  });
+
+  test("measures the real CoStar-to-Matterport offset for 2600 Travis", () => {
+    // CoStar's address point vs the Suite 100 scan's own geocoordinates.
+    const d = distanceMeters(
+      { lat: 29.74587, lon: -95.375417 },
+      { lat: 29.74582727301017, lon: -95.37531198491799 },
+    );
+    expect(d).toBeGreaterThan(5);
+    expect(d).toBeLessThan(30);
+  });
+
+  test("is symmetric", () => {
+    const a = { lat: 29.7, lon: -95.3 };
+    const b = { lat: 34.05, lon: -118.24 };
+    expect(distanceMeters(a, b)).toBeCloseTo(distanceMeters(b, a), 6);
+  });
+
+  test("Houston to Los Angeles is about 2,200 km", () => {
+    const d = distanceMeters({ lat: 29.74587, lon: -95.375417 }, { lat: 34.0522, lon: -118.2437 });
+    expect(d / 1000).toBeGreaterThan(2100);
+    expect(d / 1000).toBeLessThan(2300);
+  });
+});
+
+describe("checkCoordinates", () => {
+  test("passes a scan sitting on its CoStar address", () => {
+    const check = checkCoordinates(
+      { lat: 29.74587, lon: -95.375417 },
+      { lat: 29.74582727301017, lon: -95.37531198491799 },
+    );
+    expect(check.withinTolerance).toBe(true);
+    expect(check.distanceMeters).toBeLessThan(COORDINATE_TOLERANCE_M);
+  });
+
+  test("fails a scan in another city", () => {
+    const check = checkCoordinates({ lat: 29.74587, lon: -95.375417 }, { lat: 34.0522, lon: -118.2437 });
+    expect(check.withinTolerance).toBe(false);
+  });
+
+  test("reports nulls rather than a pass when a coordinate is missing", () => {
+    // Matterport omits geocoordinates on some models; that is unknown, not verified.
+    expect(checkCoordinates({ lat: 1, lon: 1 }, null)).toEqual({ distanceMeters: null, withinTolerance: null });
+    expect(checkCoordinates(null, { lat: 1, lon: 1 })).toEqual({ distanceMeters: null, withinTolerance: null });
   });
 });

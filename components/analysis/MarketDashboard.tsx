@@ -16,12 +16,12 @@ const SERVICE_TYPES: Record<string, string> = {
 function Card({ title, n, unit, children }: { title: string; n: number; unit: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-4 rounded-2xl border bg-card p-5">
-      <header className="flex items-baseline justify-between gap-3">
+      <header>
         <h3 className="text-lg font-semibold">{title}</h3>
         {/* Sample size on every chart: these are counts from kit properties only, not the whole market. */}
-        <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+        <p className="mt-0.5 text-sm text-muted-foreground tabular-nums">
           n = {n} {unit}
-        </span>
+        </p>
       </header>
       {children}
     </section>
@@ -36,11 +36,14 @@ function BarList({ items, total, unit, empty }: { items: { label: string; count:
       {rows.map((r) => (
         <li key={r.label} title={`${r.label}: ${r.count} of ${total} ${unit} (${r.sharePct}%)`}>
           <div className="flex items-baseline justify-between gap-3 text-base">
-            <span className="min-w-0 truncate">{r.label}</span>
-            <span className="shrink-0 font-semibold tabular-nums">{r.count}</span>
+            <span className="min-w-0">{r.label}</span>
+            <span className="shrink-0 tabular-nums">
+              <span className="font-semibold">{r.count}</span>
+              <span className="ml-1.5 text-sm text-muted-foreground">{r.sharePct}%</span>
+            </span>
           </div>
-          <div className="mt-1.5 h-2 rounded-full bg-muted" aria-hidden="true">
-            <div className="h-full min-w-1 rounded-full bg-primary" style={{ width: `${r.widthPct}%` }} />
+          <div className="mt-1.5 h-2.5 rounded-sm bg-muted" aria-hidden="true">
+            <div className="h-full min-w-1 rounded-sm bg-primary" style={{ width: `${r.widthPct}%` }} />
           </div>
         </li>
       ))}
@@ -91,28 +94,35 @@ export function MarketDashboard({
               <p className="text-base text-muted-foreground">
                 {rent.median != null ? (
                   <>
-                    Median <span className="text-2xl leading-none font-semibold text-foreground tabular-nums">{money(rent.median)}</span> per SF per year
+                    Median <span className="text-2xl leading-none font-semibold text-foreground tabular-nums">{money(rent.median)}</span>{" "}
+                    per SF per year
                   </>
                 ) : (
                   "Median not available"
                 )}
               </p>
               <div
-                className="relative mt-5 h-2 rounded-full bg-primary/25"
+                className="relative mt-6 h-2.5 rounded-sm bg-primary/25"
                 role="img"
                 aria-label={`Asking rent ranges from ${money(rent.min)} to ${money(rent.max)} per square foot per year${rent.median != null ? `, median ${money(rent.median)}` : ""}.`}
               >
                 {rent.medianPct != null && (
                   <span
-                    className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card bg-primary"
+                    className="absolute top-1/2 h-5 w-1 -translate-x-1/2 -translate-y-1/2 rounded-sm bg-primary ring-2 ring-card"
                     style={{ left: `${rent.medianPct}%` }}
                     title={`Median ${money(rent.median!)}/SF/yr`}
                   />
                 )}
               </div>
-              <div className="mt-2 flex justify-between text-sm text-muted-foreground tabular-nums">
-                <span>Low {money(rent.min)}</span>
-                <span>High {money(rent.max)}</span>
+              <div className="mt-2 flex justify-between text-sm tabular-nums">
+                <span>
+                  <span className="text-muted-foreground">Low </span>
+                  <span className="font-semibold">{money(rent.min)}</span>
+                </span>
+                <span>
+                  <span className="text-muted-foreground">High </span>
+                  <span className="font-semibold">{money(rent.max)}</span>
+                </span>
               </div>
               <p className="mt-3 text-sm leading-snug text-muted-foreground">
                 Asking rents, not achieved rents, and only from spaces that publish a rate.

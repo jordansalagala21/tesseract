@@ -66,10 +66,11 @@ function OpportunityCard({ opp, titleId, ...chipProps }: ChipProps & { opp: Oppo
                   <dt className="text-sm text-muted-foreground">{label}</dt>
                   <dd className={score == null ? "mt-1 text-sm leading-5 text-muted-foreground" : "mt-0.5 text-xl font-semibold tabular-nums"}>
                     {scoreText(score)}
+                    {score != null && <span className="ml-1 text-sm font-normal text-muted-foreground">/ 100</span>}
                   </dd>
                   {score != null && (
-                    <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
-                      <div className="h-full rounded-full bg-primary" style={{ width: `${score}%` }} />
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-sm bg-muted" aria-hidden="true">
+                      <div className="h-full rounded-sm bg-primary" style={{ width: `${score}%` }} />
                     </div>
                   )}
                 </div>

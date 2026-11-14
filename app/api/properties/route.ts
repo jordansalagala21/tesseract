@@ -13,6 +13,15 @@ export async function GET(request: Request) {
     });
   }
 
-  const { items, total } = await searchProperties(parsed.data);
-  return Response.json({ items, total });
+  try {
+    const { items, total } = await searchProperties(parsed.data);
+    return Response.json({ items, total });
+  } catch (error) {
+    // A teammate who has not run the import yet should be told that, not handed a 500.
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("npm run db:build")) {
+      return apiError(503, "upstream_error", message);
+    }
+    throw error;
+  }
 }

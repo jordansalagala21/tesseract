@@ -18,7 +18,7 @@ Every `MarketAnalysis` includes `limitations`, for example "Kit covers CoStar's 
 ## 2. Rent normalization (see kit `concepts/metrics-and-formulas.md`)
 
 ```
-psfYear = rateBasis == Monthly ? rate × 12 : rate        (rate 0 → null)
+psfYear = rateBasis == Monthly ? rate × 12 : rate        (rate = rateLow / rateHigh; 0 → null; unknown basis → null)
 ```
 
 - Keep `serviceType` with every value.
@@ -68,6 +68,8 @@ Four components, each 0–100 or **null**:
   - `possible` if 50–69
   - `unlikely` if below 50
   - `insufficient_evidence` if overall is null
+- Blockers are **hard** (cap the verdict: ≥70 becomes `possible`, 50–69 becomes `unlikely`), e.g. an upper floor for a use that needs a ground floor, a ceiling below the use's minimum, or a space under half the minimum size; or **soft** (shown, verdict unchanged), e.g. a same-category competitor already in the building.
+- A factor is scored only when its fact is known; unknown is never treated as bad. Use requirements live in `lib/market/uses.ts` and are planning heuristics, not codes or market data.
 - Weights are user-adjustable in the UI (UI-10). The LLM explains scores and never sets them.
 
 ## 5. Financial scenarios (`lib/finance`)
@@ -94,10 +96,16 @@ cashOnCash = (NOI − annualDebtService) / equity
 - Missing input → that output is `null`, plus a warning.
 - The disclaimer is fixed by the schema.
 
-## 6. Persona emphasis (AI-07)
+## 6. Persona emphasis (AI-07, `lib/agent/personas.ts`)
 
-| Persona | Emphasis |
-|---|---|
-| Owner | Best uses for this property or suite. Physical and access weight up. Tenant-profile suggestions. |
-| Investor | Separate acquisition vs lease/reposition sections. Economic weight up. Risks first. |
-| Entrepreneur | Space ranking for one concept. Rent fit and physical fit first. Shortlist with broker questions. |
+| Persona | Weights (physical / market / access / economic) | Allowed strategies | Emphasis |
+|---|---|---|---|
+| Owner | 40 / 20 / 25 / 15 | lease, reposition | Best uses for this property or suite. Physical fit and access first. Tenant-profile suggestions. |
+| Investor | 25 / 25 / 15 / 35 | acquisition and/or lease/reposition, per the stated preference | Acquisition and lease/reposition are shown as separate groups, each ranked by score. Risks first. No value is estimated without an asking price. |
+| Entrepreneur | 35 / 15 / 15 / 35 | lease | One concept ranked across 3+ spaces when available. Rent fit and physical fit first. Broker questions as next steps. |
+
+**Always true, whatever the persona (AI-03):**
+- Every opportunity cites at least one verified fact. Evidence ids the model invents are dropped, and the contract rejects any that slip through.
+- "Permitted use / zoning not verified" is recorded as missing evidence on every analysis.
+- A data tool that fails is recorded as missing evidence.
+- Each use's key checks (`lib/market/uses.ts`) are listed as unknowns.

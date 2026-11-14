@@ -6,7 +6,7 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 // Counts verified from the CoStar hackathon kit (docs/DATA_SOURCES.md).
 const proofPoints = [
   { value: "3,955", label: "advertised lease spaces" },
-  { value: "122", label: "suites with a matched 3D scan" },
+  { value: "110", label: "suites with a matched 3D scan" },
   { value: "2", label: "markets, Houston and Los Angeles" },
 ];
 

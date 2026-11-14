@@ -64,6 +64,11 @@ export const LeaseScenarioInput = z.object({
   buildOutCostUsd: Assumption,
   monthlyRevenueUsd: Assumption.optional(),
   otherMonthlyOpexUsd: Assumption.optional(),
+  /**
+   * Occupancy cost as a share of revenue the business can sustain, in percent (e.g. 10 = 10%).
+   * Needed for break-even revenue. Always a labelled assumption (user or app default), never market data.
+   */
+  targetOccupancyCostRatioPct: Assumption.optional(),
 });
 
 /** Investor acquiring a property */

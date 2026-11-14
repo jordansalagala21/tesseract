@@ -127,8 +127,14 @@ export const AvailableSpace = z.object({
   matterport: z
     .object({
       modelId: z.string(),
-      /** caption_suite_match: CoStar attachment caption names this suite (text match, not an official link) */
-      linkMethod: z.enum(["caption_suite_match"]),
+      /**
+       * How the model was linked to this suite:
+       * - space_floorplan_videokey: the space's own CoStar floorPlan record carries the model id
+       *   (a direct link; ~20 spaces kit-wide). Prefer this when both signals exist.
+       * - caption_suite_match: a CoStar property attachment caption names this suite
+       *   (a text match, not an official link). Where both exist in the kit, they agree.
+       */
+      linkMethod: z.enum(["space_floorplan_videokey", "caption_suite_match"]),
       caption: z.string(),
     })
     .nullable(),

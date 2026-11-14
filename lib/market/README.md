@@ -2,9 +2,9 @@
 
 | Planned module | Issue | Responsibility |
 |---|---|---|
-| `analyze.ts` | AI-04 | `MarketAnalysis` from nearby kit spaces, tenants and comps (via `lib/data`) — always returns `limitations` |
-| `rent.ts` | AI-04 | Rent normalization to $/SF/yr; never mix service types silently (see kit `concepts/metrics-and-formulas.md`) |
-| `scoring.ts` | AI-05 | Deterministic per-use requirement tables → `ScoreComponent`s; `null` when evidence is missing |
-| `uses.ts` | AI-03, AI-05 | Catalogue of candidate business uses and their physical/market requirements |
+| `analyze.ts` | AI-04 ✅ | `analyzeNearby()`: DATA-07 nearby context → `MarketAnalysis`, cited evidence, per-use market signals; always returns `limitations` |
+| `rent.ts` | AI-04 ✅ | Comparable rent = same serviceType **and** spaceUse, or none (recorded as `missing`). Rates arrive normalized to $/SF/yr from DATA-07 |
+| `scoring.ts` | AI-05 ✅ | `scoreUse()`: cited site facts + market signals → 4 `ScoreComponent`s, overall, blockers (hard/soft), verdict; `null` when evidence is missing |
+| `uses.ts` | AI-05 ✅ | 6 candidate uses and their requirements (planning heuristics, labelled as such) |
 
 See `docs/MARKET_ANALYSIS.md`.

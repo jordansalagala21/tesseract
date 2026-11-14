@@ -28,6 +28,7 @@ import {
 } from "@/lib/contracts";
 import { AgentToolName as ToolNameSchema } from "@/lib/contracts";
 import { USES } from "@/lib/market/uses";
+import { allowedStrategies, orderForPersona, personaPrompt, personaWeights } from "./personas";
 import { EvidenceRegistry, type EvidenceDraft } from "./evidence";
 import {
   ReportInput,
@@ -36,7 +37,6 @@ import {
   UNAVAILABLE_DEPS,
   parseSubject,
   runTool,
-  subjectKey,
   toolDefinitions,
   type AgentState,
   type DataDeps,
@@ -73,39 +73,6 @@ How to work:
 
 const nowIso = () => new Date().toISOString();
 
-function personaPrompt(request: AnalysisRequest): string {
-  const i = request.input;
-  const uses = Object.values(USES).map((u) => `${u.id} (${u.label})`).join(", ");
-  const common = `Candidate use categories you can score: ${uses}. Present at most ${request.options.maxCandidates} opportunities.`;
-  switch (i.persona) {
-    case "owner":
-      return [
-        `Persona: property owner. Analyze CoStar property ${i.propertyId}${i.spaceId ? `, advertised space ${i.spaceId}` : ""} and find the best alternative uses.`,
-        `Scoring subject key: ${subjectKey(i.propertyId, i.spaceId)}.`,
-        i.priorities.length ? `Owner priorities: ${i.priorities.join("; ")}.` : "",
-        i.constraints.length ? `Owner constraints: ${i.constraints.join("; ")}.` : "",
-        `Interior vision allowed: ${request.options.includeInteriorVision}. Aerial vision allowed: ${request.options.includeAerialVision}.`,
-        common,
-      ].filter(Boolean).join("\n");
-    case "investor":
-      return [
-        `Persona: investor with $${i.capitalUsd.toLocaleString("en-US")} capital, ${i.riskTolerance} risk tolerance, ${i.horizonYears}-year horizon, markets: ${i.markets.join(", ")}.`,
-        `Strategy preference: ${i.strategy}. Analyze leasing and acquisition separately; use strategy "acquisition" or "lease"/"reposition" per opportunity, never both.`,
-        i.targetAnnualReturn !== undefined ? `User's target annual return: ${(i.targetAnnualReturn * 100).toFixed(1)}% (a user assumption, not a promise).` : "",
-        i.goals.length ? `Goals: ${i.goals.join("; ")}.` : "",
-        common,
-      ].filter(Boolean).join("\n");
-    case "entrepreneur":
-      return [
-        `Persona: business starter. Concept: "${i.businessConcept}". Needs ${i.sfMin.toLocaleString("en-US")}–${i.sfMax.toLocaleString("en-US")} SF in ${i.markets.join(", ")}.`,
-        i.maxRentPsfYear ? `Budget: up to $${i.maxRentPsfYear}/SF/yr (user assumption).` : "No rent budget given.",
-        i.mustHaves.length ? `Must-haves: ${i.mustHaves.join("; ")}.` : "",
-        "Find advertised spaces that fit, load their profiles, and score the concept's closest use category for each space (one subject per space).",
-        common,
-      ].filter(Boolean).join("\n");
-  }
-}
-
 /** Seed evidence from the user's own inputs, so scoring can cite it. */
 function seedUserEvidence(request: AnalysisRequest, state: AgentState) {
   const i = request.input;
@@ -133,19 +100,36 @@ function toolsFor(request: AnalysisRequest): AgentToolName[] {
 }
 
 /** Turn the model's report plus the deterministic scores into contract Opportunities, ranked by score. */
+/**
+ * Turn the model's report plus the deterministic scores into contract Opportunities (AI-03).
+ * Rules: only scored (subject, use) pairs; only strategies the persona allows; every opportunity
+ * cites at least one verified fact; invented evidence ids are dropped; each use's key checks are
+ * always listed as unknowns. Ranking is by score (grouped by strategy for investors).
+ */
 function buildOpportunities(report: ReportInput | null, state: AgentState, request: AnalysisRequest): Opportunity[] {
   if (!report) return [];
   const scenarioIds = new Set(state.scenarios.map((s) => s.id));
+  const allowed = new Set(allowedStrategies(request.input));
+  const isVerified = (id: string) => state.evidence.get(id)?.kind === "verified_fact";
   const seen = new Set<string>();
   const built: Opportunity[] = [];
   for (const o of report.opportunities) {
     const subject = parseSubject(o.subject);
     const scored = state.scores[o.subject]?.[o.useCategory];
     const key = `${o.subject}|${o.useCategory}|${o.strategy}`;
-    if (!subject || !scored || seen.has(key)) continue; // only present what was actually scored
+    if (!subject || !scored || seen.has(key) || !allowed.has(o.strategy)) continue;
+
+    // Every opportunity must rest on at least one verified fact: the model's citations first,
+    // then the verified facts the deterministic scores used.
+    const scoreEvidence = Object.values(scored.scores).flatMap((c) => (c && typeof c === "object" ? c.evidenceIds : []));
+    const cited = state.evidence.known(o.supportingEvidenceIds);
+    const supporting = cited.some(isVerified) ? cited : state.evidence.known([...cited, ...scoreEvidence.filter(isVerified)]);
+    if (!supporting.some(isVerified)) continue;
+
     seen.add(key);
+    const checks = USES[o.useCategory].keyChecks.filter((c) => !o.unknowns.some((u) => u.toLowerCase() === c.toLowerCase()));
     built.push({
-      id: `opp_${built.length + 1}`,
+      id: "",
       rank: 1,
       title: o.title,
       useCategory: o.useCategory,
@@ -155,19 +139,56 @@ function buildOpportunities(report: ReportInput | null, state: AgentState, reque
       verdict: scored.verdict,
       summary: o.summary,
       scores: scored.scores,
-      supportingEvidenceIds: state.evidence.known(o.supportingEvidenceIds),
+      supportingEvidenceIds: supporting,
       blockers: scored.blockers.map(({ description, evidenceIds }) => ({ description, evidenceIds })),
-      unknowns: o.unknowns,
+      unknowns: [...o.unknowns, ...checks],
       likelyChanges: o.likelyChanges,
       nextSteps: o.nextSteps,
       financialScenarioIds: o.financialScenarioIds.filter((id) => scenarioIds.has(id)),
     });
   }
-  return built
-    .sort((a, b) => (b.scores.overall ?? -1) - (a.scores.overall ?? -1))
+  return orderForPersona(request.input, built)
     .slice(0, request.options.maxCandidates)
     .map((o, i) => ({ ...o, rank: i + 1, id: `opp_${i + 1}` }));
 }
+
+/** Facts the kit never has, recorded up front so no analysis implies they were checked. */
+function seedStandingGaps(state: AgentState) {
+  state.evidence.add({
+    kind: "missing",
+    id: "ev_missing_permitted_use",
+    statement: "Permitted uses and zoning for this site are not verified",
+    whyNeeded: "A new use must be allowed by zoning, permits and any lease or deed restrictions.",
+    howToResolve: "Confirm with the city's planning department and the listing broker.",
+    sources: [],
+  });
+}
+
+/** A data tool that failed leaves a gap; record it once per tool so it can't be silently forgotten. */
+function recordToolGap(state: AgentState, tool: AgentToolName, message: string) {
+  const id = `ev_missing_${tool}`;
+  if (state.evidence.has(id)) return;
+  state.evidence.add({
+    kind: "missing",
+    id,
+    statement: `${TOOL_GAP_LABELS[tool]} could not be checked`,
+    whyNeeded: message,
+    sources: [],
+  });
+}
+
+const TOOL_GAP_LABELS: Record<AgentToolName, string> = {
+  search_properties: "Property search",
+  search_available_spaces: "Advertised-space search",
+  get_property_profile: "CoStar property facts",
+  get_nearby_context: "Nearby rents and tenants",
+  get_matterport_model: "Matterport 3D model details",
+  analyze_interior: "Interior condition and build-out",
+  get_aerial_imagery: "Aerial imagery",
+  analyze_exterior: "Site access from aerial imagery",
+  score_uses: "Use scoring",
+  run_financial_scenario: "Financial scenario",
+};
 
 export async function runAnalysis(opts: RunOptions): Promise<AnalysisResponse> {
   const now = opts.now ?? nowIso;
@@ -206,6 +227,8 @@ export async function runAnalysis(opts: RunOptions): Promise<AnalysisResponse> {
   });
   const publish = () => opts.onUpdate?.(snapshot("running"));
 
+  state.weights = personaWeights(request.input);
+  seedStandingGaps(state);
   seedUserEvidence(request, state);
   const tools = toolDefinitions(toolsFor(request));
   const messages: BetaMessageParam[] = [{ role: "user", content: personaPrompt(request) }];
@@ -294,6 +317,7 @@ export async function runAnalysis(opts: RunOptions): Promise<AnalysisResponse> {
           // A failed tool is recorded and the investigation continues.
           const message = e instanceof Error ? e.message : String(e);
           Object.assign(call, { status: "failed", finishedAt: now(), error: message });
+          if (e instanceof ToolUnavailableError) recordToolGap(state, name.data, message);
           const hint = e instanceof ToolUnavailableError ? " Continue without it and list the gap under missing." : "";
           results.push({ type: "tool_result", tool_use_id: use.id, is_error: true, content: message + hint });
         }

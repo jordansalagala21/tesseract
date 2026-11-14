@@ -74,11 +74,22 @@ const SUFFIX_CANONICAL: Record<string, string> = {
  *
  * The canonicalization is word-bounded on purpose. "Broadway" contains "road", so an unbounded
  * replace would store it as "brdway" and lose every Broadway building.
+ *
+ * String.raw is load-bearing: in a plain template literal `\b` is a backspace character
+ * (U+0008), not a regex word boundary, so every replace here silently matched nothing and only
+ * the query side was canonicalized. Exported so a test can assert the SQL we actually emit,
+ * which is the only check that runs in CI — the behavioural tests need the sponsor DuckDB.
  */
-const SEARCH_HAYSTACK_SQL = Object.entries(SUFFIX_CANONICAL).reduce(
-  (expr, [long, short]) => `regexp_replace(${expr}, '\b${long}\b', '${short}', 'g')`,
+export const SEARCH_HAYSTACK_SQL = Object.entries(SUFFIX_CANONICAL).reduce(
+  (expr, [long, short]) => `regexp_replace(${expr}, '${String.raw`\b${long}\b`}', '${short}', 'g')`,
   "regexp_replace(lower(concat_ws(' ', name, street, city, state, postcode)), '[^a-z0-9]+', ' ', 'g')",
 );
+
+/**
+ * Makes a typed `%` or `_` literal. String.raw again: `ESCAPE '\'` in a plain template literal
+ * collapses to `ESCAPE ''`, which DuckDB accepts and then ignores — no escape character at all.
+ */
+export const LIKE_ESCAPE_SQL = String.raw`ESCAPE '\'`;
 
 /**
  * Split a user's query into match tokens: lower-cased, punctuation dropped, suffixes
@@ -188,7 +199,7 @@ export async function searchProperties(query: PropertySearchQuery): Promise<Prop
     // Every token must appear, in any order. Still fully parameterized, so a quote in the
     // search text is data and not SQL, and ESCAPE makes a typed % or _ literal.
     for (const token of searchTokens(query.q)) {
-      where.push(`${SEARCH_HAYSTACK_SQL} ILIKE ? ESCAPE '\'`);
+      where.push(`${SEARCH_HAYSTACK_SQL} ILIKE ? ${LIKE_ESCAPE_SQL}`);
       params.push(`%${token}%`);
     }
   }

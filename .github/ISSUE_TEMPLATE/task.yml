@@ -1,0 +1,35 @@
+name: Task
+description: A unit of work for one workstream
+title: "<ID>: <title>"
+labels: ["type: task"]
+body:
+  - type: textarea
+    id: description
+    attributes: { label: Description }
+    validations: { required: true }
+  - type: dropdown
+    id: workstream
+    attributes:
+      label: Workstream
+      options: [Foundation (Dev 1), AI & Market (Dev 1), Data (Dev 2), Frontend (Dev 3), Integration (Team), Optional]
+    validations: { required: true }
+  - type: dropdown
+    id: priority
+    attributes: { label: Priority, options: [P0, P1, P2] }
+    validations: { required: true }
+  - type: input
+    id: dependencies
+    attributes: { label: Dependencies, placeholder: "e.g. DATA-01, SET-02" }
+  - type: textarea
+    id: acceptance
+    attributes: { label: Acceptance criteria, value: "- [ ] " }
+    validations: { required: true }
+  - type: dropdown
+    id: scope
+    attributes: { label: Estimated scope, options: ["S (≤2h)", "M (2–4h)", "L (4–8h)"] }
+  - type: textarea
+    id: files
+    attributes: { label: Files / directories to modify }
+  - type: textarea
+    id: verification
+    attributes: { label: Test / verification requirement }

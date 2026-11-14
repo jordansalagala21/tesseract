@@ -1,0 +1,12 @@
+# Enable once teammates' GitHub usernames are confirmed (replace placeholders, uncomment).
+# Ownership mirrors CLAUDE.md §5.
+#
+# /lib/agent/        @jordansalagala21
+# /lib/market/       @jordansalagala21
+# /lib/finance/      @jordansalagala21
+# /lib/contracts/    @jordansalagala21 @DEV2 @DEV3
+# /lib/data/         @DEV2
+# /scripts/          @DEV2
+# /app/api/properties/ @DEV2
+# /app/              @DEV3
+# /components/       @DEV3

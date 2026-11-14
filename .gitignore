@@ -1,0 +1,62 @@
+# ---------- dependencies ----------
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# ---------- build / test output ----------
+/.next/
+/out/
+/build
+/coverage
+*.tsbuildinfo
+next-env.d.ts
+
+# ---------- secrets: NEVER commit ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.creds
+*.creds.env
+credentials.json
+service-account*.json
+
+# ---------- sponsor data (licensed; each dev keeps a local copy) ----------
+# The CoStar kit lives OUTSIDE this repo (see COSTAR_KIT_DIR in .env.example).
+costar-hackathon-kit/
+costar-hackathon-kit.zip
+*.jsonl
+/data/*
+!/data/README.md
+
+# ---------- local databases ----------
+*.duckdb
+*.duckdb.wal
+*.db
+*.sqlite
+
+# ---------- downloaded imagery & API responses (licensed / temporary) ----------
+/.cache/
+/imagery/
+/tmp/
+**/api-responses/
+*.dxf
+
+# ---------- scratch ----------
+/scratch/
+/scratchpad/
+*.local.md
+
+# ---------- misc ----------
+.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.vercel

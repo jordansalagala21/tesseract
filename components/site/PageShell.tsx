@@ -57,6 +57,7 @@ export function PageHeader({
         </div>
         {actions}
       </div>
+      <div className="dimension-line" aria-hidden="true" />
     </div>
   );
 }

@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-body);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-display);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -127,4 +127,70 @@
   html {
     @apply font-sans;
   }
+}
+/* Tesseract palette: concrete surface, graphite ink, plan-green accent.
+   Follows the system appearance; the .dark class still works. */
+:root {
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-inter), system-ui, sans-serif;
+  /* Archivo, set slightly expanded, gives headlines an architectural-signage feel; body stays on the system font. */
+  --font-display: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
+  --background: #f4f5f3;
+  --foreground: #16201d;
+  --card: #ffffff;
+  --card-foreground: #16201d;
+  --popover: #ffffff;
+  --popover-foreground: #16201d;
+  --primary: #1d6a56;
+  --primary-foreground: #ffffff;
+  --muted: #e8ebe7;
+  --muted-foreground: #55605b;
+  --border: #d6dbd6;
+  --input: #d6dbd6;
+  --ring: #1d6a56;
+  --plan-ink: #3a4541;
+  --plan-grid: #dfe3df;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --background: #101614;
+    --foreground: #e8ece9;
+    --card: #172019;
+    --card-foreground: #e8ece9;
+    --popover: #172019;
+    --popover-foreground: #e8ece9;
+    --primary: #62c4a4;
+    --primary-foreground: #062219;
+    --muted: #1f2925;
+    --muted-foreground: #9ba7a1;
+    --border: #2a3531;
+    --input: #2a3531;
+    --ring: #62c4a4;
+    --plan-ink: #b9c4bf;
+    --plan-grid: #222c28;
+  }
+}
+
+.dark {
+  --background: #101614;
+  --foreground: #e8ece9;
+  --card: #172019;
+  --card-foreground: #e8ece9;
+  --popover: #172019;
+  --popover-foreground: #e8ece9;
+  --primary: #62c4a4;
+  --primary-foreground: #062219;
+  --muted: #1f2925;
+  --muted-foreground: #9ba7a1;
+  --border: #2a3531;
+  --input: #2a3531;
+  --ring: #62c4a4;
+  --plan-ink: #b9c4bf;
+  --plan-grid: #222c28;
+}
+
+/* Drafting-paper dots behind the entry-card previews */
+.plan-dots {
+  background-image: radial-gradient(var(--plan-grid) 1px, transparent 1.3px);
+  background-size: 16px 16px;
 }

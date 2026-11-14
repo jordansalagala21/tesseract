@@ -1,14 +1,68 @@
-// OWNER: Developer 3 — placeholder only. The real homepage (Property / Capital / Idea entry points) is UI-01.
+import { EntryPoints } from "@/components/home/EntryPoints";
+import { ExampleOpportunity } from "@/components/home/ExampleOpportunity";
+import { HeroTransformations } from "@/components/home/HeroTransformations";
+
+// Counts verified from the CoStar hackathon kit (docs/DATA_SOURCES.md).
+const proofPoints = [
+  { value: "3,955", label: "advertised lease spaces" },
+  { value: "122", label: "suites with a matched 3D scan" },
+  { value: "2", label: "markets, Houston and Los Angeles" },
+];
+
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-6 px-4 py-24 sm:px-8">
-      <p className="text-sm font-medium uppercase tracking-widest text-muted-foreground">HackPrinceton 2026 · CoStar track</p>
-      <h1 className="text-4xl font-semibold tracking-tight">Tesseract</h1>
-      <p className="text-lg text-muted-foreground">Discover what spaces could become.</p>
-      <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-        Scaffold only. See <code>CLAUDE.md</code> and <code>docs/</code> for the plan; API routes return
-        <code> 501 Not Implemented</code> until their issues land.
-      </div>
-    </main>
+    <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col px-4 sm:px-8">
+      <header className="flex h-16 items-center">
+        <span className="flex items-center gap-2.5 text-[17px] font-semibold tracking-tight">
+          <BrandMark />
+          Tesseract
+        </span>
+      </header>
+
+      <main className="flex flex-1 flex-col gap-20 py-10 lg:gap-28 lg:py-16">
+        <section className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-14">
+          <div>
+            <h1 className="font-heading text-[clamp(2.6rem,4.6vw+1rem,4.75rem)] leading-[0.98] font-bold tracking-[-0.03em] text-balance [font-stretch:112%]">
+              Discover what spaces could become.
+            </h1>
+            <p className="mt-5 max-w-[33rem] text-[17px] leading-relaxed text-muted-foreground">
+              Tesseract reads CoStar listings, walks the Matterport 3D scan and studies Vexcel aerial images, then
+              ranks the uses that fit a space, with the evidence for each one.
+            </p>
+            <dl className="mt-8 grid max-w-[33rem] grid-cols-3 gap-4 border-t pt-5">
+              {proofPoints.map((p) => (
+                <div key={p.label}>
+                  <dt className="sr-only">{p.label}</dt>
+                  <dd className="font-heading text-[28px] leading-none font-bold tabular-nums [font-stretch:112%]">{p.value}</dd>
+                  <dd className="mt-1.5 text-[13px] leading-snug text-muted-foreground">{p.label}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="mt-3 text-[12px] text-muted-foreground">Counts from the CoStar hackathon dataset.</p>
+          </div>
+
+          <HeroTransformations />
+        </section>
+
+        <EntryPoints />
+        <ExampleOpportunity />
+      </main>
+
+      <footer className="border-t py-6 text-[13px] leading-relaxed text-muted-foreground">
+        Covers advertised space in Houston and Los Angeles from the CoStar hackathon dataset. Advertised availability
+        is not confirmed vacancy.
+      </footer>
+    </div>
+  );
+}
+
+// A tesseract drawn as two offset squares joined at the corners.
+function BrandMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-6 text-primary" fill="none" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+      <rect x="3" y="7" width="13" height="13" rx="1.5" />
+      <rect x="8" y="3" width="13" height="13" rx="1.5" />
+      <path d="M3 7 8 3M16 7l5-4M3 20l5-4M16 20l5-4" />
+    </svg>
   );
 }

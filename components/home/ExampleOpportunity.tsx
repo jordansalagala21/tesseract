@@ -30,7 +30,7 @@ export function ExampleOpportunity() {
           Every claim shows where it came from.
         </h2>
         <p className="mt-3 max-w-measure text-lg leading-relaxed text-muted-foreground">
-          Each idea is scored only on evidence the agent found. Facts, AI observations, your assumptions and missing
+          Each use is scored only on evidence the agent found. Facts, AI observations, your assumptions and missing
           information are labelled separately, and a score stays blank when the data can’t support one.
         </p>
       </div>

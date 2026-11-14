@@ -65,7 +65,7 @@ export function PropertyFacts({ property: p }: { property: Property }) {
 export function SpaceList({ spaces, note }: { spaces: AvailableSpace[]; note: string }) {
   return (
     <section aria-labelledby="spaces-heading">
-      <SectionHeading id="spaces-heading" detail={`${spaces.length} listed`}>
+      <SectionHeading id="spaces-heading" detail={`${spaces.length} advertised`}>
         Advertised spaces
       </SectionHeading>
       <p className="mb-3 text-base text-muted-foreground">{note}</p>

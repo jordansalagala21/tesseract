@@ -85,7 +85,7 @@ export function PropertyResults({ items, total, q }: { items: PropertySummary[];
                     {p.availableSpaceCount} advertised {p.availableSpaceCount === 1 ? "space" : "spaces"}
                   </Chip>
                   {p.hasSuiteMatched3d ? (
-                    <Chip tone="accent">3D of a listed suite</Chip>
+                    <Chip tone="accent">3D tour of an advertised suite</Chip>
                   ) : (
                     p.hasMatterport && <Chip tone="accent">3D tour</Chip>
                   )}

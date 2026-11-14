@@ -13,7 +13,7 @@ export function InvestorForm() {
     <form noValidate onSubmit={onSubmit} onChange={onChange} className="flex flex-col gap-6">
       <FormSection title="Your capital">
         <Field name="capitalUsd" label="Capital to invest" hint="Equity you can put in, in US dollars." error={errors.capitalUsd}>
-          <input {...describe("capitalUsd", errors.capitalUsd, true)} inputMode="decimal" autoComplete="off" placeholder="500,000" className={inputClass} />
+          <input {...describe("capitalUsd", errors.capitalUsd, true)} inputMode="decimal" autoComplete="off" placeholder="e.g. 500,000" className={inputClass} />
         </Field>
         <Segmented
           name="riskTolerance"
@@ -56,7 +56,7 @@ export function InvestorForm() {
             <input
               {...describe("targetPct", errors.targetAnnualReturn, true)}
               inputMode="decimal"
-              placeholder="8"
+              placeholder="e.g. 8"
               className={`${inputClass} pr-9`}
             />
             <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-lg text-muted-foreground">%</span>
@@ -71,7 +71,7 @@ export function InvestorForm() {
       <div className="flex justify-end">
         <Button type="submit" disabled={state.kind === "sending"}>
           {state.kind === "sending" && <Loader2 className="size-4 motion-safe:animate-spin" aria-hidden="true" />}
-          Find opportunities
+          Find buildings that fit
         </Button>
       </div>
     </form>

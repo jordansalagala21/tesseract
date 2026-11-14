@@ -103,7 +103,7 @@ const exampleAcquisition: Opportunity = {
   spaceId: null,
   strategy: "acquisition",
   verdict: "insufficient_evidence",
-  summary: "Example card showing an idea the agent couldn’t score: there is no sale listing or price for this property.",
+  summary: "Example card showing a use the agent couldn’t score: there is no sale listing or price for this property.",
   scores: {
     physical: { score: null, rationale: "Example: building-level condition not assessed.", evidenceIds: [] },
     market: { score: null, rationale: "Example: no demand data in the sponsor kit.", evidenceIds: [] },
@@ -124,7 +124,7 @@ export default function AnalysisPreviewPage() {
   return (
     <PageShell>
         <PageHeader title="Analysis preview" description="Shows how analysis results will look before the agent is connected." />
-        <Notice title="Sample data">Step 1 and the first opportunity are the 2600 Travis St development fixture. Steps 2 to 7 and the “Example” acquisition card are example states for checking the design. None of this is live agent output.</Notice>
+        <Notice title="Sample data">Step 1 and the first ranked use are the 2600 Travis St development fixture. Steps 2 to 7 and the “Example” acquisition card are example states for checking the design. None of this is live agent output.</Notice>
         <AnalysisResults analysis={{ ...a, status: "running", toolCalls: [...a.toolCalls, ...uiStateSteps] }} />
         <div className="flex flex-col gap-3">
           <p className="text-base font-medium text-muted-foreground">Investor view: buying and leasing stay separate</p>

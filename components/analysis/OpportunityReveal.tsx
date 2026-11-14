@@ -115,7 +115,7 @@ function OpportunityCard({ opp, titleId, ...chipProps }: ChipProps & { opp: Oppo
           {opp.supportingEvidenceIds.length > 0 ? (
             <Chips ids={opp.supportingEvidenceIds} {...chipProps} />
           ) : (
-            <p className="pt-1 text-base text-muted-foreground">No supporting evidence was found for this idea.</p>
+            <p className="pt-1 text-base text-muted-foreground">No supporting evidence was found for this use.</p>
           )}
         </div>
         <details className="group text-base">
@@ -168,7 +168,7 @@ export function OpportunityReveal({
           {persona === "entrepreneur" ? "Spaces that fit" : "What this space could become"}
         </h2>
         <span className="text-base text-muted-foreground tabular-nums">
-          {opportunities.length} {opportunities.length === 1 ? "idea" : "ideas"}, ranked
+          {opportunities.length} {opportunities.length === 1 ? "use" : "uses"}, ranked
         </span>
       </div>
 

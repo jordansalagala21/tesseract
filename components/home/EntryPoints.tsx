@@ -60,13 +60,13 @@ const entries = [
   {
     href: "/properties",
     title: "I have a property",
-    detail: "See what a space could become, with the evidence behind each idea and a 3D walkthrough.",
+    detail: "See what a space could become, with the evidence behind each use and a 3D tour.",
     Preview: TourPreview,
   },
   {
     href: "/invest",
     title: "I have capital",
-    detail: "Find listed buildings and uses that could pay. Leasing and buying are compared separately.",
+    detail: "Find buildings with advertised space and uses that could pay. Leasing and buying are compared separately.",
     Preview: CapitalPreview,
   },
   {

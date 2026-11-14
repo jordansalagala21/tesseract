@@ -38,10 +38,10 @@ export function EntrepreneurForm() {
         </Field>
         <div className="grid gap-5 sm:grid-cols-2">
           <Field name="sfMin" label="Smallest size" hint="Square feet." error={errors.sfMin}>
-            <input {...describe("sfMin", errors.sfMin, true)} inputMode="numeric" placeholder="1,500" className={inputClass} />
+            <input {...describe("sfMin", errors.sfMin, true)} inputMode="numeric" placeholder="e.g. 1,500" className={inputClass} />
           </Field>
           <Field name="sfMax" label="Largest size" hint="Square feet." error={errors.sfMax}>
-            <input {...describe("sfMax", errors.sfMax, true)} inputMode="numeric" placeholder="2,500" className={inputClass} />
+            <input {...describe("sfMax", errors.sfMax, true)} inputMode="numeric" placeholder="e.g. 2,500" className={inputClass} />
           </Field>
         </div>
       </FormSection>
@@ -70,7 +70,7 @@ export function EntrepreneurForm() {
                 "Listings quote rent per SF per year. Enter the largest size and we’ll convert it."
               )
             ) : (
-              "Asking rent as listed, for example 40."
+              "Asking rent as advertised, for example 40."
             )
           }
           error={errors.maxRentPsfYear}

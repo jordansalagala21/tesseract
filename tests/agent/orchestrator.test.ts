@@ -148,11 +148,22 @@ describe("runAnalysis", () => {
     expect(r.toolCalls[3].evidenceIds).toEqual(["ev_sf", "ev_rent"]);
   });
 
-  it("records the report's missing information as missing evidence", async () => {
+  it("records gaps as missing evidence: zoning always, failed tools, and the model's own", async () => {
     const r = await runAnalysis({ id: "t7", request, createMessage: happyPath().create, model: "test", deps });
     const missing = r.evidence.filter((e) => e.kind === "missing");
-    expect(missing).toHaveLength(1);
-    expect(r.evidenceIndex.missingInfoIds).toEqual([missing[0].id]);
+    expect(missing.map((m) => m.statement)).toEqual([
+      "Permitted uses and zoning for this site are not verified",
+      "Nearby rents and tenants could not be checked",
+      "Permitted uses are not verified",
+    ]);
+    expect(r.evidenceIndex.missingInfoIds).toEqual(missing.map((m) => m.id));
+  });
+
+  it("lists each use's key checks as unknowns", async () => {
+    const r = await runAnalysis({ id: "t7b", request, createMessage: happyPath().create, model: "test", deps });
+    const gym = r.opportunities.find((o) => o.useCategory === "fitness_studio")!;
+    expect(gym.unknowns[0]).toBe("Parking"); // the model's own first
+    expect(gym.unknowns).toContain("Floor loading and sound or vibration limits for equipment");
   });
 
   it("rejects a 'costar' assumption that cites no verified fact", async () => {

@@ -5,6 +5,7 @@
 | `orchestrator.ts` | `runAnalysis()`: manual Claude tool-use loop with a step limit; records every `AgentToolCall` (reason, status, timing, evidence); failed tools are recorded and the run continues; builds the `AnalysisResponse` |
 | `tools.ts` | The 10 `AgentToolName` tools (Zod input → JSON Schema), `submit_report`, and handlers. Data access is injected as `DataDeps` |
 | `evidence.ts` | `EvidenceRegistry`: assigns ids, validates every item, builds the four-bucket index, drops unknown ids |
+| `vision.ts` | AI-02: interior (Matterport photos/floor plans) and exterior (Vexcel aerials) vision → `ai_observation` evidence + build-out / corner facts. Downscales to ≤1568 px; drops measurement, code and zoning claims. `visionDeps()` plugs image sources from DATA-04/05 into the agent |
 | `store.ts` | In-memory analysis store (no persistence by design) |
 | `run.ts` | Server entry: real Anthropic client + store; never throws |
 

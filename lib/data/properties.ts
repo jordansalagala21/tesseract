@@ -101,7 +101,7 @@ export function searchTokens(q: string): string[] {
     .split(/\s+/)
     .filter((token) => token.length > 0)
     .map((token) => SUFFIX_CANONICAL[token] ?? token)
-    .map((token) => token.replace(/[\%_]/g, (char) => `\${char}`));
+    .map((token) => token.replace(/[\%_]/g, (char) => "\\" + char));
 }
 
 const MARKET_BY_RESEARCH_ID = new Map<number, keyof typeof RESEARCH_MARKET_IDS>(
@@ -342,14 +342,26 @@ interface SpaceRow {
   on_market_date: string | null;
   model_id: string | null;
   model_caption: string | null;
+  link_method: "space_floorplan_videokey" | "caption_suite_match" | null;
 }
 
 /**
  * Advertised spaces at a property. ADVERTISED AVAILABILITY, never confirmed vacancy.
  *
- * Only `caption_suite_match` links are surfaced: 20 spaces also carry a direct
- * `floorPlan.videoKey`, but AvailableSpace.matterport.linkMethod admits one value today. Once
- * Dev 1's contracts PR adds `space_floorplan_videokey`, the direct links can surface too.
+ * Matterport links come from two signals, and #53 lets us report both:
+ *   - `space_floorplan_videokey` — the space's own floorPlan names the model. Unambiguous, so
+ *     it wins when both signals exist. 20 spaces kit-wide.
+ *   - `caption_suite_match` — a property attachment caption names this suite. A text heuristic.
+ * Together they cover 125 spaces; caption alone covered 112. Where both exist they never
+ * disagree about the model (0 conflicts kit-wide), so precedence is about reporting provenance
+ * honestly rather than resolving a dispute.
+ *
+ * The caption shown prefers the suite-naming attachment text ("Suite 100 - 9,889SF") over the
+ * space's generic floorPlan caption ("View the Floor Plan"), because that is what a person
+ * reads; `linkMethod` still records how the link was actually established.
+ *
+ * One row per space is guaranteed. A property can hold two scans captioned for the same suite
+ * (space 21903500 / suite 1950 has two), which a plain join would return as a duplicate space.
  */
 export async function getSpaces(propertyId: number): Promise<AvailableSpace[]> {
   const rows = await queryRows<SpaceRow>(
@@ -357,13 +369,19 @@ export async function getSpaces(propertyId: number): Promise<AvailableSpace[]> {
     `SELECT s.* EXCLUDE (available_on, on_market_date),
             s.available_on::VARCHAR   AS available_on,
             s.on_market_date::VARCHAR AS on_market_date,
-            m.model_id, m.caption AS model_caption
+            coalesce(s.floor_plan_video_key, m.model_id)                 AS model_id,
+            coalesce(m.caption, s.floor_plan_caption)                    AS model_caption,
+            CASE
+              WHEN s.floor_plan_video_key IS NOT NULL THEN 'space_floorplan_videokey'
+              WHEN m.model_id IS NOT NULL             THEN 'caption_suite_match'
+            END                                                          AS link_method
      FROM spaces s
      LEFT JOIN matterport_models m
        ON m.property_id = s.property_id
       AND m.matched_suite = s.suite_norm
       AND m.link_method = 'caption_suite_match'
      WHERE s.property_id = ?
+     QUALIFY row_number() OVER (PARTITION BY s.id ORDER BY m.model_id NULLS LAST) = 1
      ORDER BY s.suite NULLS LAST, s.id`,
     [propertyId] as never,
   );
@@ -392,13 +410,10 @@ export async function getSpaces(propertyId: number): Promise<AvailableSpace[]> {
     onMarketDate: row.on_market_date,
     // CoStar's CDN rejects server-side requests, so the UI goes through our own proxy route.
     floorPlanImageUrl: null,
-    matterport: row.model_id
-      ? {
-          modelId: row.model_id,
-          linkMethod: "caption_suite_match" as const,
-          caption: row.model_caption ?? "",
-        }
-      : null,
+    matterport:
+      row.model_id && row.link_method
+        ? { modelId: row.model_id, linkMethod: row.link_method, caption: row.model_caption ?? "" }
+        : null,
     source: {
       system: "costar",
       dataset: "commercial-listing-summary",

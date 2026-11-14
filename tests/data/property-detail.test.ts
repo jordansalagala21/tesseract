@@ -92,14 +92,48 @@ describeDb("getSpaces (requires a built DuckDB)", () => {
     }
   });
 
-  test("links suite 100 to its Matterport model by caption match", async () => {
+  test("links suite 100 to its model by the space's own floorPlan key", async () => {
+    // Suite 100 carries BOTH signals for the same model. The direct floorPlan key is
+    // unambiguous, so that is the provenance reported; the richer attachment caption is still
+    // what a person reads.
     const spaces = await getSpaces(TRAVIS);
     expect(spaces.find((s) => s.suite === "100")?.matterport).toEqual({
       modelId: "NxYn1owequw",
-      linkMethod: "caption_suite_match",
+      linkMethod: "space_floorplan_videokey",
       caption: "Suite 100 - 9,889SF",
     });
     expect(spaces.find((s) => s.suite === "104")?.matterport?.modelId).toBe("4H2JSnQ3wSj");
+  });
+
+  test("surfaces a direct link for a space with no caption match", async () => {
+    // Before #53 these 20 spaces had no link at all, because the contract admitted only
+    // caption matches. 239774/suite 350 is one of the 13 that no caption names.
+    const spaces = await getSpaces(239774);
+    expect(spaces.find((s) => s.suite === "350")?.matterport).toMatchObject({
+      modelId: "dqAzgcvs42P",
+      linkMethod: "space_floorplan_videokey",
+    });
+  });
+
+  test("returns one row per space when a suite has two scans", async () => {
+    // Property 246836 holds two different models both captioned "Suite 1950". A plain join
+    // returns space 21903500 twice, which would put a duplicate space in the response.
+    const spaces = await getSpaces(246836);
+    const ids = spaces.map((s) => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(spaces.filter((s) => s.suite === "1950")).toHaveLength(1);
+  });
+
+  test("never reports a model against a different suite", async () => {
+    const spaces = await getSpaces(TRAVIS);
+    for (const space of spaces) {
+      if (!space.matterport) continue;
+      // Every link either came from this space's own floorPlan or names this suite.
+      const caption = space.matterport.caption.toLowerCase();
+      const suite = (space.suite ?? "").toLowerCase();
+      const namesAnotherSuite = /suite\s+([a-z0-9-]+)/.exec(caption)?.[1];
+      if (namesAnotherSuite) expect(namesAnotherSuite).toBe(suite);
+    }
   });
 
   test("leaves matterport null for a suite with no matched model", async () => {

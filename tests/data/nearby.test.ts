@@ -88,6 +88,20 @@ describeDb("getNearbyContext (requires a built DuckDB)", () => {
     expect(industryTotal).toBe(context.nearbyTenants.count);
   });
 
+  test("most current tenants carry an industry", async () => {
+    // The occupancy's own industryType is filled in for 77 of 11,191 current tenants, so
+    // byIndustry used to be almost entirely Unknown. The kit docs are explicit that
+    // company-detail's profile.industryType is the field to use for a known tenant
+    // (models/company-detail.md, models/location-occupancy.md), and build-db now prefers it.
+    const [coverage] = await rows<{ total: number; with_industry: number }>(
+      `SELECT count(*)::INT AS total, count(industry_type)::INT AS with_industry FROM tenants_current`,
+    );
+    expect(coverage.total).toBeGreaterThan(10_000);
+    // 70.3% on the current kit. A threshold rather than the exact figure, so a kit refresh
+    // does not fail the suite, but a regression to the occupancy-only field (0.7%) would.
+    expect(coverage.with_industry / coverage.total).toBeGreaterThan(0.6);
+  });
+
   test("excludes multifamily buildings from comparable spaces", async () => {
     // 7 of the spaces in the Travis radius sit in apartment buildings. A retail owner
     // comparing against apartment asking rents would be misled.

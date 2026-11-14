@@ -95,6 +95,10 @@ export async function buildDb(options: BuildDbOptions): Promise<BuildDbResult> {
   const tables: Record<string, number> = {};
 
   try {
+    // Kit timestamps are noon in a US offset (16:00/17:00Z). try_cast(TIMESTAMPTZ AS DATE) uses
+    // the session timezone, so without this pin a build on a UTC+9 machine shifts every
+    // availability, on-market, sale and tenancy date forward by a day.
+    await connection.run("SET TimeZone='UTC'");
     // ---------------------------------------------------------------- properties
     log("building properties…");
     await connection.run(`
@@ -167,7 +171,9 @@ export async function buildDb(options: BuildDbOptions): Promise<BuildDbResult> {
         ${sqlEnum(enums, "ListingType", "listing_type_raw")}  AS listing_type,
         s.suite,
         ${sqlNormalizeSuite("s.suite")}                       AS suite_norm,
-        CAST(s.floorName AS VARCHAR)                          AS floor,
+        -- floorName is an integer FloorName enum, 153 members (24 = FirstFloor, 23 = Ground).
+        -- Member 1 is UnknownFloor, which carries no more meaning than 0 Unknown.
+        nullif(${sqlEnum(enums, "FloorName", "s.floorName")}, 'UnknownFloor') AS floor,
         ${sqlEnum(enums, "SpaceUse", "s.spaceUse")}           AS space_use,
         ${sqlEnum(enums, "SpaceType", "s.spaceType")}         AS space_type,
         s.squareFeetMin                                       AS sf_min,
@@ -229,31 +235,59 @@ export async function buildDb(options: BuildDbOptions): Promise<BuildDbResult> {
     tables.tenants_current = await countRows(connection, "tenants_current");
 
     // -------------------------------------------------------------------- comps
-    // One row per (comp, property entity). `salePriceStatus` always travels with the price:
-    // the raw id is kept because 125 priced comps carry Unknown (0), which has no label.
+    // One row per (comp, property). Two kit warnings drive the shape here
+    // (models/commercial-sale-comp.md:11,26,27):
+    //
+    //  1. More than one entry in `entities` means a multi-property or portfolio sale, and
+    //     `soldForPrice` is the price of the WHOLE sale. 684 comps are like this (409 priced,
+    //     up to 781 properties each). Publishing that total as one property's sale price would
+    //     fabricate a property value — comp 1228299 would put $39.2B on each of 485 properties,
+    //     labelled Confirmed. So `sold_for_price` is per-property only: the comp price when the
+    //     sale covered exactly one property, otherwise CoStar's own `allocatedPrice` for that
+    //     entity, which is null on the largest portfolios. The whole-sale figure stays in
+    //     `portfolio_sold_for_price`, where it cannot be mistaken for a single asset.
+    //  2. `salePriceStatus` always travels with the price; the raw id is kept because 125
+    //     priced comps carry Unknown (0), which has no label to show.
+    //
+    // Some comps list the same property several times (comp 3486993 lists 5528958 nine times),
+    // which would over-report counts.saleComps, so one row per (comp, property) wins.
     log("building comps…");
     await connection.run(`
       CREATE OR REPLACE TABLE comps AS
       WITH flat AS (
         SELECT
           id, soldForPrice, soldDate, salePriceStatus, saleType, tenure, isLandValueSale,
+          portfolioType, len(entities) AS entity_count,
           unnest(entities) AS e
         FROM ${jsonSource(options.kitDir, "commercial-sale-comp")}
         WHERE entities IS NOT NULL
+      ),
+      projected AS (
+        SELECT
+          id::INT                                                   AS comp_id,
+          e.propertyId::INT                                         AS property_id,
+          entity_count::INT                                         AS entity_count,
+          CASE WHEN entity_count = 1 THEN soldForPrice::DOUBLE
+               ELSE e.allocatedPrice::DOUBLE END                    AS sold_for_price,
+          e.allocatedPrice::DOUBLE                                  AS allocated_price,
+          e.allocatedPriceStatus::INT                               AS allocated_price_status_id,
+          soldForPrice::DOUBLE                                      AS portfolio_sold_for_price,
+          ${sqlEnum(enums, "PortfolioType", "portfolioType")}       AS portfolio_type,
+          try_cast(soldDate AS DATE)                                AS sold_date,
+          salePriceStatus::INT                                      AS sale_price_status_id,
+          ${sqlEnum(enums, "SalePriceStatus", "salePriceStatus")}   AS sale_price_status,
+          ${sqlEnum(enums, "SaleType", "saleType")}                 AS sale_type,
+          ${sqlEnum(enums, "Tenure", "tenure")}                     AS tenure,
+          isLandValueSale                                           AS is_land_value_sale,
+          'commercial-sale-comp'                                    AS source_dataset
+        FROM flat
+        WHERE e.propertyId IS NOT NULL
       )
-      SELECT
-        id::INT                                                   AS comp_id,
-        e.propertyId::INT                                         AS property_id,
-        soldForPrice                                              AS sold_for_price,
-        try_cast(soldDate AS DATE)                                AS sold_date,
-        salePriceStatus::INT                                      AS sale_price_status_id,
-        ${sqlEnum(enums, "SalePriceStatus", "salePriceStatus")}   AS sale_price_status,
-        ${sqlEnum(enums, "SaleType", "saleType")}                 AS sale_type,
-        ${sqlEnum(enums, "Tenure", "tenure")}                     AS tenure,
-        isLandValueSale                                           AS is_land_value_sale,
-        'commercial-sale-comp'                                    AS source_dataset
-      FROM flat
-      WHERE e.propertyId IS NOT NULL
+      SELECT * FROM projected
+      QUALIFY row_number() OVER (
+        PARTITION BY comp_id, property_id
+        ORDER BY allocated_price DESC NULLS LAST, sold_for_price DESC NULLS LAST
+      ) = 1
     `);
     tables.comps = await countRows(connection, "comps");
 
@@ -266,10 +300,10 @@ export async function buildDb(options: BuildDbOptions): Promise<BuildDbResult> {
       SELECT
         l.id::INT                                                 AS listing_id,
         l.propertyId::INT                                         AS property_id,
-        l.forSaleSummary.askingPriceLow                           AS asking_price_low,
-        l.forSaleSummary.askingPriceHigh                          AS asking_price_high,
-        l.forSaleSummary.capitalizationRate                       AS capitalization_rate,
-        l.forSaleSummary.netOperatingIncome                       AS net_operating_income,
+        l.forSaleSummary.askingPriceLow::DOUBLE                   AS asking_price_low,
+        l.forSaleSummary.askingPriceHigh::DOUBLE                  AS asking_price_high,
+        l.forSaleSummary.capitalizationRate::DOUBLE               AS capitalization_rate,
+        l.forSaleSummary.netOperatingIncome::DOUBLE               AS net_operating_income,
         l.forSaleSummary.totalAvailableSquareFeet                 AS total_available_sf,
         ${sqlEnum(enums, "SaleStatus", "l.forSaleSummary.saleStatus")}  AS sale_status,
         ${sqlEnum(enums, "SaleType", "l.forSaleSummary.saleType")}      AS sale_type,

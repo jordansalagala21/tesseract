@@ -115,11 +115,96 @@ describeKit("buildDb (requires the sponsor kit)", () => {
     expect(n).toBe(0);
   });
 
-  test("an unknown rate basis keeps the raw rate but has no normalized rate", async () => {
+  test("every unknown-basis space in this kit is a no-rate space", async () => {
+    // The plan assumed 14 spaces had a non-zero rate with an Unknown basis. They don't: all 14
+    // have rateLow = rateHigh = 0, so this table cannot exercise "raw rate kept, normalized
+    // null" at all. That semantic is pinned by the unit test in tests/data/rent.test.ts.
+    const [{ unknown_rows, with_raw, with_psf }] = await rows<{
+      unknown_rows: number;
+      with_raw: number;
+      with_psf: number;
+    }>(
+      `SELECT count(*)::INT unknown_rows, count(rate_low)::INT with_raw, count(psf_year_low)::INT with_psf
+       FROM spaces WHERE rate_basis = 'unknown'`,
+    );
+    expect(unknown_rows).toBe(14);
+    expect(with_raw).toBe(0);
+    expect(with_psf).toBe(0);
+  });
+
+  test("floor is the decoded FloorName, not the raw enum ordinal", async () => {
+    // floorName is `integer (FloorName)`, a 153-member enum: 24 = FirstFloor, 23 = Ground.
+    // Casting it to text put "24" on every Travis suite, which reads as the 24th storey of a
+    // two-storey retail building. The agreed fixture says "FirstFloor".
+    const f = await rows<{ floor: string }>(
+      "SELECT DISTINCT floor FROM spaces WHERE property_id = 1018657",
+    );
+    expect(f.map((r) => r.floor)).toEqual(["FirstFloor"]);
+  });
+
+  test("no space exposes a bare integer as its floor", async () => {
     const [{ n }] = await rows<{ n: number }>(
-      "SELECT count(*)::INT n FROM spaces WHERE rate_basis = 'unknown' AND psf_year_low IS NOT NULL",
+      "SELECT count(*)::INT n FROM spaces WHERE floor IS NOT NULL AND regexp_matches(floor, '^[0-9]+$')",
     );
     expect(n).toBe(0);
+  });
+
+  test("a portfolio comp's price is never attached to one property as its own", async () => {
+    // 684 comps cover several properties; fanning the comp-level price across entities would
+    // publish a portfolio total as each property's sale price (CLAUDE.md §6.2).
+    const [{ n }] = await rows<{ n: number }>(
+      "SELECT count(*)::INT n FROM comps WHERE entity_count > 1 AND sold_for_price IS NOT NULL AND allocated_price IS NULL",
+    );
+    expect(n).toBe(0);
+  });
+
+  test("the 485-property portfolio comp keeps its price at portfolio level only", async () => {
+    const [r] = await rows<Record<string, unknown>>(
+      `SELECT entity_count, sold_for_price, portfolio_sold_for_price, portfolio_type, sale_price_status
+       FROM comps WHERE comp_id = 1228299 AND property_id = 129240`,
+    );
+    expect(r).toMatchObject({
+      entity_count: 485,
+      sold_for_price: null,
+      portfolio_sold_for_price: 39205645000,
+      portfolio_type: "BulkPortfolio",
+      sale_price_status: "Confirmed",
+    });
+  });
+
+  test("money is a JS number, and a portfolio total survives a cast INT could not hold", async () => {
+    // getRowObjectsJS() returns BIGINT as a JS bigint, which fails z.number() and makes
+    // JSON.stringify throw. $39.2B also overflows INT32, so the cast must be DOUBLE.
+    const [c] = await rows<Record<string, unknown>>(
+      "SELECT portfolio_sold_for_price p FROM comps WHERE comp_id = 1228299 LIMIT 1",
+    );
+    expect(typeof c.p).toBe("number");
+    expect(c.p).toBe(39205645000);
+    const [s] = await rows<Record<string, unknown>>(
+      "SELECT asking_price_low a FROM sale_listings WHERE asking_price_low IS NOT NULL LIMIT 1",
+    );
+    expect(typeof s.a).toBe("number");
+  });
+
+  test("comps has one row per (comp, property)", async () => {
+    // Some comps list the same property several times (comp 3486993 lists 5528958 nine times),
+    // which would over-report counts.saleComps and skew any average over comps.
+    const [{ n }] = await rows<{ n: number }>(
+      `SELECT count(*)::INT n FROM (
+         SELECT comp_id, property_id FROM comps GROUP BY ALL HAVING count(*) > 1
+       )`,
+    );
+    expect(n).toBe(0);
+  });
+
+  test("dates are pinned to UTC so every machine builds the same date", async () => {
+    // Kit timestamps are noon in a US offset (16:00/17:00Z). try_cast(TIMESTAMPTZ AS DATE) uses
+    // the session timezone, so an unpinned build on a UTC+9 machine shifts every date a day.
+    // This assertion cannot fail on a US-timezone machine; it guards the teammate in Asia.
+    const [{ stored }] = await rows<{ stored: string }>(
+      "SELECT available_on::VARCHAR stored FROM spaces WHERE id = 21053094",
+    );
+    expect(stored).toBe("2018-08-13");
   });
 
   test("availability_status admits only the two advertised values", async () => {
@@ -185,21 +270,42 @@ describeKit("buildDb (requires the sponsor kit)", () => {
   });
 
   test("a priced comp whose status is Unknown keeps the id and decodes to a null label", async () => {
-    // 125 of the kit's priced comps carry salePriceStatus 0. The raw id is what we must not lose;
-    // the decoded label is null because "Unknown" is not a status we can show anyone.
-    const [{ n }] = await rows<{ n: number }>(
-      `SELECT count(DISTINCT comp_id)::INT n FROM comps
+    // The raw id is what we must not lose; the decoded label is null because "Unknown" is not a
+    // status we can show anyone. 132 comps have a PER-PROPERTY price with status 0: 110 whose
+    // sale covered one property, plus 22 portfolio members with their own allocatedPrice.
+    const [{ total, single_prop, via_allocated }] = await rows<{
+      total: number;
+      single_prop: number;
+      via_allocated: number;
+    }>(
+      `SELECT count(DISTINCT comp_id)::INT total,
+              count(DISTINCT CASE WHEN entity_count = 1 THEN comp_id END)::INT single_prop,
+              count(DISTINCT CASE WHEN entity_count > 1 THEN comp_id END)::INT via_allocated
+       FROM comps
        WHERE sold_for_price IS NOT NULL AND sale_price_status_id = 0 AND sale_price_status IS NULL`,
     );
-    expect(n).toBe(125);
+    expect(total).toBe(132);
+    expect(single_prop).toBe(110);
+    expect(via_allocated).toBe(22);
   });
 
-  test("comps are unnested to one row per property entity", async () => {
+  test("comps is one row per (comp, property) after dropping repeated entities", async () => {
     const [{ n }] = await rows<{ n: number }>(
       "SELECT count(*)::INT n FROM comps WHERE property_id IS NULL",
     );
     expect(n).toBe(0);
-    expect(result.tables.comps).toBe(17339);
+    // 17,339 raw (comp, entity) pairs minus 29 repeats of a property inside one comp.
+    expect(result.tables.comps).toBe(17310);
+  });
+
+  test("no per-property comp price is a portfolio total in disguise", async () => {
+    // Before the fix, 6,252 rows carried a price over $1B and comp 1228299 put $39.2B on each
+    // of 485 properties. The portfolio figure is still available, just not as one asset's price.
+    const [{ per_property, portfolio }] = await rows<{ per_property: number; portfolio: number }>(
+      "SELECT max(sold_for_price) per_property, max(portfolio_sold_for_price) portfolio FROM comps",
+    );
+    expect(per_property).toBeLessThan(1_000_000_000);
+    expect(portfolio).toBe(39205645000);
   });
 
   test("sale_listings carry the seller's marketed cap rate and NOI", async () => {

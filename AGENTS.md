@@ -25,7 +25,7 @@ only what `CLAUDE.md` does not cover: how two AI agents work this repo at the sa
 - **Never commit** sponsor data (`*.jsonl`, the kit folder), `*.duckdb`, downloaded imagery, or
   `.env.local`. Never paste any of those into a chat window or a third-party service either —
   the CoStar kit is sponsor-licensed.
-- **Secrets** live only in `.env.local`. Read them through `serverEnv()`. Never print one.
+- **Secrets** live only in `.env.local`. Read them through the narrow accessors in `lib/config/env.ts` (`matterportEnv()`, `vexcelEnv()`, `agentEnv()`), so a missing key for one service never breaks another. Never print one.
 - Rate `0` means "no rate" → `null`. Rents normalize to $/SF/yr and always carry `serviceType`.
 
 ## Working alongside another agent
@@ -63,7 +63,7 @@ Rooms classified `Void` have **no** dimensions. Scanned area ≠ leasable area (
 both 401). `GET ortho/collections?wkt=POINT(lon lat)&srid=4326&layer=urban` returns GeoJSON;
 for the demo property it gives collection `us-tx-houston-2026`, product-type `final-ortho`.
 `ortho/extract` and `oriented/extract` (`product-type=oblique-north|south|east|west`) take a
-POLYGON WKT and return JPEG. A POINT to `extract` is a 404. The API sends
+POLYGON WKT and return JPEG. A bare POINT to `extract` is rejected with **HTTP 400** (it needs a polygon, `bbox-dimensions` or `buffer-meter`), so `lib/data/vexcel.ts` builds a polygon. The API sends
 `X-Frame-Options: DENY`, so **always proxy through our own route** — never hand a Vexcel URL or
 the key to the browser. Images carry a "© Vexcel Imaging US, Inc." watermark: keep attribution.
 Unknown routes return 500, not 404.
@@ -72,13 +72,15 @@ Unknown routes return 500, not 404.
 `docs/DATA_SOURCES.md` (`dateOffMarket` is absent, not null; rates are `rateLow`/`rateHigh`;
 geocoding is on `primaryAddress`; `toDate` is absent rather than null on current tenancies).
 
-## Current state (2026-11-14)
+## Current state
 
-- **Merged:** DATA-01 (#51) — `npm run db:build` builds six DuckDB tables from the kit.
-- **In review:** DATA-02 (#55), DATA-03 (#56, stacked on #55), DATA-07 (#58).
-- **Open, unblocked:** DATA-04 (Matterport client), DATA-05 (Vexcel client), DATA-06 (cross-source
-  verification, needs 04 and 05).
-- **Not started:** AI-01…AI-07 (Dev 1) and the INT issues that wire the agent to the data.
+Do not trust a snapshot here; it goes stale within hours. Check live:
+
+```bash
+gh pr list --state open        # what is in review
+gh issue list --state open     # what is left, with owners in the title prefix (AI-, DATA-, UI-, INT-)
+git log --oneline origin/main  # what has landed
+```
 
 Run `npm run db:build` once locally before touching anything that reads the database; DB-dependent
 tests skip themselves when `$DUCKDB_PATH` is absent, which is how CI stays green without the kit.

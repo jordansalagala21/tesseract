@@ -18,7 +18,7 @@ Every `MarketAnalysis` includes `limitations`, for example "Kit covers CoStar's 
 ## 2. Rent normalization (see kit `concepts/metrics-and-formulas.md`)
 
 ```
-psfYear = rateBasis == Monthly ? rate × 12 : rate        (rate 0 → null)
+psfYear = rateBasis == Monthly ? rate × 12 : rate        (rate = rateLow / rateHigh; 0 → null; unknown basis → null)
 ```
 
 - Keep `serviceType` with every value.

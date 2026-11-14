@@ -45,7 +45,7 @@ function subscribeReduced(onChange: () => void) {
 }
 
 const pill =
-  "inline-block rounded-full bg-black/65 px-2.5 py-1 text-[11px] leading-4 font-medium text-white backdrop-blur-sm sm:text-[12px]";
+  "inline-block rounded-full bg-black/65 px-2.5 py-1 text-[11px] leading-4 font-medium text-white backdrop-blur-sm sm:px-3 sm:py-1.5 sm:text-[13px]";
 
 const clamp = (n: number) => Math.min(100, Math.max(0, n));
 
@@ -94,7 +94,7 @@ export function HeroBeforeAfter() {
     <figure className="relative overflow-hidden rounded-[28px] border bg-muted">
       <div
         ref={frame}
-        className={cn("relative aspect-[16/9] touch-pan-y select-none", hasAfter && "cursor-ew-resize")}
+        className={cn("relative aspect-[4/3] touch-pan-y select-none sm:aspect-[16/9]", hasAfter && "cursor-ew-resize")}
         onPointerDown={(e) => {
           if (!hasAfter) return;
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -110,7 +110,7 @@ export function HeroBeforeAfter() {
           alt={BEFORE.alt}
           fill
           priority
-          sizes="(min-width: 1024px) 640px, 100vw"
+          sizes="(min-width: 1280px) 1200px, 100vw"
           className="object-cover"
           draggable={false}
         />
@@ -128,7 +128,7 @@ export function HeroBeforeAfter() {
               src={use.after!}
               alt={use.alt}
               fill
-              sizes="(min-width: 1024px) 640px, 100vw"
+              sizes="(min-width: 1280px) 1200px, 100vw"
               className="object-cover"
               draggable={false}
             />

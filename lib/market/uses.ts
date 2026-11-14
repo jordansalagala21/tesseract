@@ -42,6 +42,8 @@ export interface UseRequirements {
   /** Same-category businesses (for saturation) and complementary neighbours, by industry keyword. */
   competitorKeywords: string[];
   complementKeywords: string[];
+  /** Things that must be confirmed before this use is viable; always listed as unknowns. */
+  keyChecks: string[];
 }
 
 export const USES: Record<UseCategory, UseRequirements> = {
@@ -56,6 +58,7 @@ export const USES: Record<UseCategory, UseRequirements> = {
     benefitsFrom: ["commercial_kitchen", "bar_counter", "restrooms", "storefront_glazing"],
     competitorKeywords: ["restaurant", "bar", "food", "eating"],
     complementKeywords: ["office", "entertainment", "hotel", "apartment"],
+    keyChecks: ["Kitchen exhaust hood and grease interceptor condition or feasibility", "Gas and electrical capacity for a commercial kitchen", "Liquor licensing and hours rules for this location"],
   },
   cafe: {
     id: "cafe",
@@ -68,6 +71,7 @@ export const USES: Record<UseCategory, UseRequirements> = {
     benefitsFrom: ["bar_counter", "restrooms", "storefront_glazing"],
     competitorKeywords: ["coffee", "cafe", "bakery"],
     complementKeywords: ["office", "medical", "university", "apartment"],
+    keyChecks: ["Plumbing for an espresso bar and hand sinks", "Health-department requirements for food prep", "Seating and signage rules for the storefront"],
   },
   fitness_studio: {
     id: "fitness_studio",
@@ -80,6 +84,7 @@ export const USES: Record<UseCategory, UseRequirements> = {
     benefitsFrom: ["open_floor", "high_open_ceiling", "restrooms"],
     competitorKeywords: ["fitness", "gym", "training", "yoga", "pilates"],
     complementKeywords: ["apartment", "office", "health"],
+    keyChecks: ["Floor loading and sound or vibration limits for equipment", "Showers and changing-room plumbing", "Parking available to members at peak hours"],
   },
   medical_office: {
     id: "medical_office",
@@ -92,6 +97,7 @@ export const USES: Record<UseCategory, UseRequirements> = {
     benefitsFrom: ["exam_rooms", "private_offices", "restrooms"],
     competitorKeywords: ["medical", "clinic", "dental", "physician", "health"],
     complementKeywords: ["pharmacy", "apartment", "office"],
+    keyChecks: ["Plumbing for exam-room sinks", "Accessibility of the entrance and restrooms", "Patient parking and drop-off"],
   },
   specialty_retail: {
     id: "specialty_retail",
@@ -104,6 +110,7 @@ export const USES: Record<UseCategory, UseRequirements> = {
     benefitsFrom: ["storefront_glazing", "open_floor", "high_open_ceiling"],
     competitorKeywords: ["retail", "apparel", "boutique", "store"],
     complementKeywords: ["retail", "restaurant", "apartment"],
+    keyChecks: ["Signage and storefront visibility rules", "Loading access for deliveries", "Co-tenancy or use restrictions in the lease"],
   },
   coworking: {
     id: "coworking",
@@ -116,6 +123,7 @@ export const USES: Record<UseCategory, UseRequirements> = {
     benefitsFrom: ["private_offices", "open_floor", "restrooms"],
     competitorKeywords: ["coworking", "shared office", "executive suites"],
     complementKeywords: ["cafe", "restaurant", "apartment"],
+    keyChecks: ["Restroom count for the expected occupancy", "Internet service options in the building", "After-hours access and HVAC"],
   },
 };
 

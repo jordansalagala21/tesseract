@@ -21,46 +21,51 @@ export default function Home() {
       <SiteHeader />
       <div className="mx-auto flex w-full max-w-page flex-1 flex-col px-4 sm:px-8">
         <main className="flex flex-1 flex-col gap-20 pt-10 pb-20 sm:pt-14 lg:gap-28">
-          {/* First screen: what Tesseract does, the one action to take, and the before/after proof. */}
-          <section className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-14">
-            <div className="flex flex-col gap-8">
-              <div>
-                <h1 className="font-heading text-4xl font-bold tracking-tight text-balance [font-stretch:112%]">
-                  Discover what spaces could become.
-                </h1>
-                <p className="mt-5 max-w-measure text-lg text-muted-foreground">
+          {/* First screen: headline and the one action on the left, what it does and the proof points on the
+              right, then the before/after full width so the transformation is the biggest thing on the page. */}
+          <section className="flex flex-col gap-10 lg:gap-12">
+            <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-end lg:gap-14">
+              <div className="flex flex-col gap-8">
+                <div>
+                  <h1 className="font-heading text-4xl font-bold tracking-tight text-balance [font-stretch:112%]">
+                    Discover what spaces could become.
+                  </h1>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <Link href="/properties" className={cn(buttonVariants(), "w-fit")}>
+                    Find a property
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                  </Link>
+                  <p className="text-base text-muted-foreground">
+                    Or start from{" "}
+                    <Link href="/invest" className="relative font-medium text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-3 hover:text-primary">
+                      your budget
+                    </Link>{" "}
+                    or{" "}
+                    <Link href="/start" className="relative font-medium text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-3 hover:text-primary">
+                      a business idea
+                    </Link>
+                    .
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-6">
+                <p className="max-w-measure text-lg text-muted-foreground">
                   Tesseract reads CoStar listings, walks the Matterport 3D scan and studies Vexcel aerial images, then
                   ranks the uses that fit a space, with the evidence for each one.
                 </p>
-              </div>
-              <div className="flex flex-col gap-3">
-                <Link href="/properties" className={cn(buttonVariants(), "w-fit")}>
-                  Find a property
-                  <ArrowRight className="size-4" aria-hidden="true" />
-                </Link>
-                <p className="text-base text-muted-foreground">
-                  Or start from{" "}
-                  <Link href="/invest" className="relative font-medium text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-3 hover:text-primary">
-                    your budget
-                  </Link>{" "}
-                  or{" "}
-                  <Link href="/start" className="relative font-medium text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-3 hover:text-primary">
-                    a business idea
-                  </Link>
-                  .
-                </p>
-              </div>
-              <div>
-                <dl className="grid max-w-measure grid-cols-3 gap-4 border-t pt-5">
-                  {proofPoints.map((p) => (
-                    <div key={p.label}>
-                      <dt className="sr-only">{p.label}</dt>
-                      <dd className="font-heading text-2xl font-bold tabular-nums [font-stretch:112%]">{p.value}</dd>
-                      <dd className="mt-1.5 text-sm text-muted-foreground">{p.label}</dd>
-                    </div>
-                  ))}
-                </dl>
-                <p className="mt-3 text-xs text-muted-foreground">Counts from the CoStar hackathon dataset.</p>
+                <div>
+                  <dl className="grid max-w-measure grid-cols-3 gap-4 border-t pt-5">
+                    {proofPoints.map((p) => (
+                      <div key={p.label}>
+                        <dt className="sr-only">{p.label}</dt>
+                        <dd className="font-heading text-2xl font-bold tabular-nums [font-stretch:112%]">{p.value}</dd>
+                        <dd className="mt-1.5 text-sm text-muted-foreground">{p.label}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <p className="mt-3 text-xs text-muted-foreground">Counts from the CoStar hackathon dataset.</p>
+                </div>
               </div>
             </div>
 

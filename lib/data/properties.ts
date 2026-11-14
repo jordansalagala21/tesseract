@@ -101,7 +101,8 @@ export function searchTokens(q: string): string[] {
     .split(/\s+/)
     .filter((token) => token.length > 0)
     .map((token) => SUFFIX_CANONICAL[token] ?? token)
-    .map((token) => token.replace(/[\%_]/g, (char) => "\\" + char));
+    // A backslash cannot survive the step above, so only % and _ need escaping here.
+    .map((token) => token.replace(/[%_]/g, (char) => "\\" + char));
 }
 
 const MARKET_BY_RESEARCH_ID = new Map<number, keyof typeof RESEARCH_MARKET_IDS>(

@@ -1,6 +1,7 @@
 import { Check, Circle, Loader2, Minus, X } from "lucide-react";
 import type { AgentToolCall, AnalysisResponse, Evidence } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
+import { EvidenceChip } from "./EvidenceChip";
 import { formatDuration, toolLabel } from "./timeline-format";
 
 type Status = AgentToolCall["status"];
@@ -11,13 +12,6 @@ const STATUS: Record<Status, { label: string; Icon: typeof Check; tone: string }
   succeeded: { label: "Done", Icon: Check, tone: "border-primary bg-primary text-primary-foreground" },
   failed: { label: "Failed", Icon: X, tone: "border-destructive bg-destructive text-white" },
   skipped: { label: "Skipped", Icon: Minus, tone: "border-border bg-muted text-muted-foreground" },
-};
-
-const KIND_DOT: Record<Evidence["kind"], string> = {
-  verified_fact: "bg-primary",
-  ai_observation: "bg-amber-500",
-  user_assumption: "bg-sky-500",
-  missing: "bg-muted-foreground",
 };
 
 const RUN_STATUS: Record<AnalysisResponse["status"], string> = {
@@ -102,30 +96,11 @@ export function AgentTimeline({
                   )}
                   {call.evidenceIds.length > 0 && (
                     <ul aria-label="Evidence from this step" className="mt-2.5 flex flex-wrap gap-1.5">
-                      {call.evidenceIds.map((id) => {
-                        const ev = byId.get(id);
-                        const chip = (
-                          <>
-                            <span className={cn("size-1.5 shrink-0 rounded-full", ev ? KIND_DOT[ev.kind] : "bg-muted-foreground")} aria-hidden="true" />
-                            <span className="truncate">{ev?.statement ?? id}</span>
-                          </>
-                        );
-                        const cls =
-                          "inline-flex max-w-full items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[13px] leading-4 font-medium text-foreground transition-colors outline-none hover:bg-primary/12 focus-visible:ring-2 focus-visible:ring-ring sm:max-w-[22rem]";
-                        return (
-                          <li key={id} className="max-w-full">
-                            {onEvidenceSelect ? (
-                              <button type="button" onClick={() => onEvidenceSelect(id)} className={cls}>
-                                {chip}
-                              </button>
-                            ) : (
-                              <a href={`#evidence-${id}`} className={cls}>
-                                {chip}
-                              </a>
-                            )}
-                          </li>
-                        );
-                      })}
+                      {call.evidenceIds.map((id) => (
+                        <li key={id} className="max-w-full">
+                          <EvidenceChip id={id} evidence={byId.get(id)} onSelect={onEvidenceSelect} />
+                        </li>
+                      ))}
                     </ul>
                   )}
                 </div>

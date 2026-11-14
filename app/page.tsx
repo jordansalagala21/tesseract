@@ -1,6 +1,6 @@
 import { EntryPoints } from "@/components/home/EntryPoints";
 import { ExampleOpportunity } from "@/components/home/ExampleOpportunity";
-import { HeroTransformations } from "@/components/home/HeroTransformations";
+import { HeroBeforeAfter } from "@/components/home/HeroBeforeAfter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 
 // Counts verified from the CoStar hackathon kit (docs/DATA_SOURCES.md).
@@ -37,7 +37,7 @@ export default function Home() {
             <p className="mt-3 text-[12px] text-muted-foreground">Counts from the CoStar hackathon dataset.</p>
           </div>
 
-          <HeroTransformations />
+          <HeroBeforeAfter />
         </section>
 
         <EntryPoints />

@@ -1,0 +1,317 @@
+/**
+ * Agent orchestration (AI-01). OWNER: Developer 1.
+ *
+ * A manual Claude tool-use loop (we need per-call records with reasons, timing and evidence,
+ * a hard step limit, and failed tools that don't stop the analysis).
+ *
+ * Division of labour:
+ *  - Claude decides what to investigate and writes the explanations.
+ *  - Tools return cited evidence; lib/market scores uses; lib/finance computes scenarios.
+ *  - Claude never sets a score, a verdict or a number. Opportunities are ranked by score.
+ */
+import type {
+  BetaContentBlockParam,
+  BetaMessage,
+  BetaMessageParam,
+  BetaTool,
+  BetaToolResultBlockParam,
+  BetaToolUseBlock,
+  MessageCreateParamsNonStreaming,
+} from "@anthropic-ai/sdk/resources/beta/messages/messages";
+import {
+  AnalysisResponse,
+  STANDARD_DISCLAIMERS,
+  type AgentToolCall,
+  type AgentToolName,
+  type AnalysisRequest,
+  type Opportunity,
+} from "@/lib/contracts";
+import { AgentToolName as ToolNameSchema } from "@/lib/contracts";
+import { USES } from "@/lib/market/uses";
+import { EvidenceRegistry, type EvidenceDraft } from "./evidence";
+import {
+  ReportInput,
+  SUBMIT_REPORT,
+  ToolUnavailableError,
+  UNAVAILABLE_DEPS,
+  parseSubject,
+  runTool,
+  subjectKey,
+  toolDefinitions,
+  type AgentState,
+  type DataDeps,
+} from "./tools";
+
+
+/** The one SDK call the orchestrator makes; injectable so tests can script Claude. */
+export type CreateMessage = (params: MessageCreateParamsNonStreaming) => Promise<BetaMessage>;
+
+export interface RunOptions {
+  id: string;
+  request: AnalysisRequest;
+  createMessage: CreateMessage;
+  model: string;
+  deps?: DataDeps;
+  now?: () => string;
+  /** Called with a fresh snapshot after every step, so pollers see live progress. */
+  onUpdate?: (snapshot: AnalysisResponse) => void;
+}
+
+const SYSTEM_PROMPT = `You are Tesseract's investigation agent. You help people discover evidence-backed alternative uses for commercial space, using CoStar data, Matterport 3D scans and Vexcel aerial imagery.
+
+How to work:
+- Investigate with the tools, then call score_uses for the candidate uses that fit, then call submit_report once.
+- Every tool call needs a short "reason" sentence; the user sees it in a live timeline.
+- Only state what the tools returned. Cite evidence ids exactly as given. If something is unknown, say so and list it under missing; never estimate demographics, foot traffic, competitor counts, property values, rents or returns.
+- You do not set scores or verdicts. score_uses does. Explain its results in plain language.
+- "Advertised available" is not "vacant". Never call a space vacant.
+- Vision results are AI observations, not measurements, inspections, or code or zoning findings.
+- Leasing and acquisition are separate strategies; never blend them in one opportunity or scenario.
+- If a tool fails or is not connected, carry on with what you have and list the gap under missing.
+- Financial scenarios: label every assumption honestly (origin user, costar or default). Use origin costar only with the evidenceId of a CoStar verified fact.
+- Keep summaries short and concrete. Write for a property owner, not an analyst.`;
+
+const nowIso = () => new Date().toISOString();
+
+function personaPrompt(request: AnalysisRequest): string {
+  const i = request.input;
+  const uses = Object.values(USES).map((u) => `${u.id} (${u.label})`).join(", ");
+  const common = `Candidate use categories you can score: ${uses}. Present at most ${request.options.maxCandidates} opportunities.`;
+  switch (i.persona) {
+    case "owner":
+      return [
+        `Persona: property owner. Analyze CoStar property ${i.propertyId}${i.spaceId ? `, advertised space ${i.spaceId}` : ""} and find the best alternative uses.`,
+        `Scoring subject key: ${subjectKey(i.propertyId, i.spaceId)}.`,
+        i.priorities.length ? `Owner priorities: ${i.priorities.join("; ")}.` : "",
+        i.constraints.length ? `Owner constraints: ${i.constraints.join("; ")}.` : "",
+        `Interior vision allowed: ${request.options.includeInteriorVision}. Aerial vision allowed: ${request.options.includeAerialVision}.`,
+        common,
+      ].filter(Boolean).join("\n");
+    case "investor":
+      return [
+        `Persona: investor with $${i.capitalUsd.toLocaleString("en-US")} capital, ${i.riskTolerance} risk tolerance, ${i.horizonYears}-year horizon, markets: ${i.markets.join(", ")}.`,
+        `Strategy preference: ${i.strategy}. Analyze leasing and acquisition separately; use strategy "acquisition" or "lease"/"reposition" per opportunity, never both.`,
+        i.targetAnnualReturn !== undefined ? `User's target annual return: ${(i.targetAnnualReturn * 100).toFixed(1)}% (a user assumption, not a promise).` : "",
+        i.goals.length ? `Goals: ${i.goals.join("; ")}.` : "",
+        common,
+      ].filter(Boolean).join("\n");
+    case "entrepreneur":
+      return [
+        `Persona: business starter. Concept: "${i.businessConcept}". Needs ${i.sfMin.toLocaleString("en-US")}–${i.sfMax.toLocaleString("en-US")} SF in ${i.markets.join(", ")}.`,
+        i.maxRentPsfYear ? `Budget: up to $${i.maxRentPsfYear}/SF/yr (user assumption).` : "No rent budget given.",
+        i.mustHaves.length ? `Must-haves: ${i.mustHaves.join("; ")}.` : "",
+        "Find advertised spaces that fit, load their profiles, and score the concept's closest use category for each space (one subject per space).",
+        common,
+      ].filter(Boolean).join("\n");
+  }
+}
+
+/** Seed evidence from the user's own inputs, so scoring can cite it. */
+function seedUserEvidence(request: AnalysisRequest, state: AgentState) {
+  const i = request.input;
+  if (i.persona === "entrepreneur" && i.maxRentPsfYear) {
+    const draft: EvidenceDraft = {
+      kind: "user_assumption",
+      id: "ev_user_budget",
+      origin: "user",
+      statement: `Rent budget up to $${i.maxRentPsfYear}/SF/yr`,
+      value: i.maxRentPsfYear,
+      unit: "$/SF/yr",
+      sources: [{ system: "user" }],
+    };
+    const id = state.evidence.add(draft);
+    state.preferences.maxRentPsfYear = { value: i.maxRentPsfYear, evidenceId: id };
+  }
+}
+
+function toolsFor(request: AnalysisRequest): AgentToolName[] {
+  return ToolNameSchema.options.filter(
+    (t) =>
+      (request.options.includeInteriorVision || t !== "analyze_interior") &&
+      (request.options.includeAerialVision || t !== "analyze_exterior"),
+  );
+}
+
+/** Turn the model's report plus the deterministic scores into contract Opportunities, ranked by score. */
+function buildOpportunities(report: ReportInput | null, state: AgentState, request: AnalysisRequest): Opportunity[] {
+  if (!report) return [];
+  const scenarioIds = new Set(state.scenarios.map((s) => s.id));
+  const seen = new Set<string>();
+  const built: Opportunity[] = [];
+  for (const o of report.opportunities) {
+    const subject = parseSubject(o.subject);
+    const scored = state.scores[o.subject]?.[o.useCategory];
+    const key = `${o.subject}|${o.useCategory}|${o.strategy}`;
+    if (!subject || !scored || seen.has(key)) continue; // only present what was actually scored
+    seen.add(key);
+    built.push({
+      id: `opp_${built.length + 1}`,
+      rank: 1,
+      title: o.title,
+      useCategory: o.useCategory,
+      propertyId: subject.propertyId,
+      spaceId: subject.spaceId,
+      strategy: o.strategy,
+      verdict: scored.verdict,
+      summary: o.summary,
+      scores: scored.scores,
+      supportingEvidenceIds: state.evidence.known(o.supportingEvidenceIds),
+      blockers: scored.blockers.map(({ description, evidenceIds }) => ({ description, evidenceIds })),
+      unknowns: o.unknowns,
+      likelyChanges: o.likelyChanges,
+      nextSteps: o.nextSteps,
+      financialScenarioIds: o.financialScenarioIds.filter((id) => scenarioIds.has(id)),
+    });
+  }
+  return built
+    .sort((a, b) => (b.scores.overall ?? -1) - (a.scores.overall ?? -1))
+    .slice(0, request.options.maxCandidates)
+    .map((o, i) => ({ ...o, rank: i + 1, id: `opp_${i + 1}` }));
+}
+
+export async function runAnalysis(opts: RunOptions): Promise<AnalysisResponse> {
+  const now = opts.now ?? nowIso;
+  const deps = opts.deps ?? UNAVAILABLE_DEPS;
+  const { request } = opts;
+  const createdAt = now();
+  let idCounter = 0;
+  const state: AgentState = {
+    evidence: new EvidenceRegistry(now),
+    facts: {},
+    market: {},
+    preferences: {},
+    scores: {},
+    scenarios: [],
+    newId: (prefix) => `${prefix}_${opts.id}_${++idCounter}`,
+  };
+  const toolCalls: AgentToolCall[] = [];
+  let report: ReportInput | null = null;
+  let error: string | null = null;
+
+  const snapshot = (status: AnalysisResponse["status"]): AnalysisResponse => ({
+    id: opts.id,
+    status,
+    persona: request.input.persona,
+    request,
+    createdAt,
+    completedAt: status === "completed" || status === "failed" ? now() : null,
+    evidence: state.evidence.all(),
+    evidenceIndex: state.evidence.index(),
+    opportunities: status === "completed" ? buildOpportunities(report, state, request) : [],
+    marketAnalysis: null,
+    financialScenarios: [...state.scenarios],
+    toolCalls: [...toolCalls],
+    disclaimers: [...STANDARD_DISCLAIMERS],
+    error,
+  });
+  const publish = () => opts.onUpdate?.(snapshot("running"));
+
+  seedUserEvidence(request, state);
+  const tools = toolDefinitions(toolsFor(request));
+  const messages: BetaMessageParam[] = [{ role: "user", content: personaPrompt(request) }];
+  let steps = 0;
+  let nudged = false;
+
+  try {
+    // Each loop turn is one model call. The step budget counts investigation tool calls.
+    for (let turn = 0; turn < request.options.maxAgentSteps + 4; turn++) {
+      const response = await opts.createMessage({
+        model: opts.model,
+        max_tokens: 16000,
+        system: SYSTEM_PROMPT,
+        tools: tools as BetaTool[],
+        messages,
+        output_config: { effort: "medium" },
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+      });
+
+      if (response.stop_reason === "refusal") {
+        throw new Error("The model declined this request.");
+      }
+      messages.push({ role: "assistant", content: response.content as BetaContentBlockParam[] });
+
+      const toolUses = response.content.filter((b): b is BetaToolUseBlock => b.type === "tool_use");
+      if (toolUses.length === 0) {
+        if (report || nudged) break;
+        nudged = true;
+        messages.push({ role: "user", content: `Now call ${SUBMIT_REPORT} with your opportunities.` });
+        continue;
+      }
+
+      const results: BetaToolResultBlockParam[] = [];
+      for (const use of toolUses) {
+        if (use.name === SUBMIT_REPORT) {
+          const parsed = ReportInput.safeParse(use.input);
+          if (parsed.success) {
+            report = parsed.data;
+            for (const m of parsed.data.missing) {
+              state.evidence.add({ kind: "missing", statement: m.statement, whyNeeded: m.whyNeeded, howToResolve: m.howToResolve, sources: [] });
+            }
+            results.push({ type: "tool_result", tool_use_id: use.id, content: "Report received." });
+          } else {
+            results.push({ type: "tool_result", tool_use_id: use.id, is_error: true, content: `Invalid report: ${parsed.error.message}` });
+          }
+          continue;
+        }
+
+        const name = ToolNameSchema.safeParse(use.name);
+        const input = (use.input ?? {}) as Record<string, unknown>;
+        const reasonText = typeof input.reason === "string" && input.reason ? input.reason : "No reason given.";
+        if (!name.success) {
+          results.push({ type: "tool_result", tool_use_id: use.id, is_error: true, content: `Unknown tool ${use.name}.` });
+          continue;
+        }
+
+        const call: AgentToolCall = {
+          id: `tc_${toolCalls.length + 1}`,
+          step: toolCalls.length + 1,
+          tool: name.data,
+          reason: reasonText,
+          input: Object.fromEntries(Object.entries(input).filter(([k]) => k !== "reason")),
+          status: "running",
+          startedAt: now(),
+          finishedAt: null,
+          outputSummary: null,
+          evidenceIds: [],
+          error: null,
+        };
+
+        if (steps >= request.options.maxAgentSteps) {
+          toolCalls.push({ ...call, status: "skipped", finishedAt: now(), error: "Step limit reached." });
+          results.push({ type: "tool_result", tool_use_id: use.id, is_error: true, content: `Step limit reached. Call ${SUBMIT_REPORT} now.` });
+          continue;
+        }
+        steps++;
+        toolCalls.push(call);
+        publish();
+
+        try {
+          const r = await runTool(name.data, use.input, state, deps);
+          Object.assign(call, { status: "succeeded", finishedAt: now(), outputSummary: r.summary, evidenceIds: r.evidenceIds });
+          results.push({ type: "tool_result", tool_use_id: use.id, content: JSON.stringify(r.forModel) });
+        } catch (e) {
+          // A failed tool is recorded and the investigation continues.
+          const message = e instanceof Error ? e.message : String(e);
+          Object.assign(call, { status: "failed", finishedAt: now(), error: message });
+          const hint = e instanceof ToolUnavailableError ? " Continue without it and list the gap under missing." : "";
+          results.push({ type: "tool_result", tool_use_id: use.id, is_error: true, content: message + hint });
+        }
+        publish();
+      }
+
+      // All tool results go back in one user message.
+      messages.push({ role: "user", content: results });
+      if (report) break;
+    }
+    if (!report) error = "The agent finished without submitting a report.";
+  } catch (e) {
+    error = e instanceof Error ? e.message : String(e);
+  }
+
+  const final = snapshot(report && !error ? "completed" : "failed");
+  const checked = AnalysisResponse.safeParse(final);
+  if (checked.success) return checked.data;
+  // Never return an invalid response: keep the investigation record, drop what failed validation.
+  return { ...final, status: "failed", opportunities: [], error: `Response failed validation: ${checked.error.message}` };
+}

@@ -1,12 +1,30 @@
-# Enable once teammates' GitHub usernames are confirmed (replace placeholders, uncomment).
-# Ownership mirrors CLAUDE.md §5.
-#
-# /lib/agent/        @jordansalagala21
-# /lib/market/       @jordansalagala21
-# /lib/finance/      @jordansalagala21
-# /lib/contracts/    @jordansalagala21 @DEV2 @DEV3
-# /lib/data/         @DEV2
-# /scripts/          @DEV2
-# /app/api/properties/ @DEV2
-# /app/              @DEV3
-# /components/       @DEV3
+# Ownership mirrors CLAUDE.md §5. Owners are auto-requested as reviewers on PRs touching their paths.
+# The LAST matching pattern wins, so broad rules come first and specific ones after.
+# (The main ruleset requires 1 approval from anyone with write access; code-owner review is not enforced.)
+
+# Default: tech lead
+*                         @jordansalagala21
+
+# Dev 3 — Frontend
+/app/                     @abhiramvedipala
+/components/              @abhiramvedipala
+
+# Dev 2 — Data (overrides /app/ for these API routes)
+/lib/data/                @nguyennnssson
+/scripts/                 @nguyennnssson
+/app/api/properties/      @nguyennnssson
+/app/api/imagery/         @nguyennnssson
+
+# Dev 1 — Tech Lead / AI & Market (overrides /app/ for these API routes)
+/lib/agent/               @jordansalagala21
+/lib/market/              @jordansalagala21
+/lib/finance/             @jordansalagala21
+/lib/config/              @jordansalagala21
+/lib/http.ts              @jordansalagala21
+/app/api/analyze/         @jordansalagala21
+/app/api/analysis/        @jordansalagala21
+/app/api/market/          @jordansalagala21
+/app/api/finance/         @jordansalagala21
+
+# Shared contracts — every workstream reviews
+/lib/contracts/           @jordansalagala21 @nguyennnssson @abhiramvedipala

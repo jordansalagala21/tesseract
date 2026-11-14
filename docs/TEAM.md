@@ -3,10 +3,10 @@
 | Dev | Role | GitHub | Owns |
 |---|---|---|---|
 | **Dev 1** | Tech Lead / AI & Market Intelligence | `@jordansalagala21` | `lib/agent/`, `lib/market/`, `lib/finance/`, `lib/contracts/`, `lib/config/`, `lib/http.ts`, `app/api/{analyze,analysis,market,finance}`, docs, CI |
-| **Dev 2** | Data Engineer | _TBD_ | `lib/data/`, `scripts/`, `app/api/properties/**`, `app/api/imagery/**` |
-| **Dev 3** | Frontend Engineer | _TBD_ | `app/` (except `app/api`), `components/`, `app/globals.css` |
+| **Dev 2** | Data Engineer | `@nguyennnssson` | `lib/data/`, `scripts/`, `app/api/properties/**`, `app/api/imagery/**` |
+| **Dev 3** | Frontend Engineer | `@abhiramvedipala` | `app/` (except `app/api`), `components/`, `app/globals.css` |
 
-Fill in the GitHub usernames once confirmed. After that, issues get assigned and `.github/CODEOWNERS` gets enabled.
+Issues are assigned per workstream. `.github/CODEOWNERS` auto-requests the owning developer as a reviewer on PRs that touch their paths.
 
 > **Do not modify files owned by another developer unless explicitly instructed. Do not implement duplicate functionality that belongs to another workstream.**
 

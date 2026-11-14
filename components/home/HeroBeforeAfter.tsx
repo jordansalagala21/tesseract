@@ -26,13 +26,13 @@ const USES: Use[] = [
   {
     id: "gym",
     label: "Gym",
-    after: null, // "/hero/gym.webp" once the render is ready
+    after: "/hero/gym.webp",
     alt: "The same floor shown as a boutique gym: AI-generated illustration.",
   },
   {
     id: "cafe",
     label: "Café",
-    after: null, // "/hero/cafe.webp" once the render is ready
+    after: "/hero/cafe.webp",
     alt: "The same floor shown as a café: AI-generated illustration.",
   },
 ];

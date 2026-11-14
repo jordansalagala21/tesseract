@@ -7,7 +7,13 @@
  */
 import "server-only";
 import { z } from "zod";
-import { PropertySearchQuery, RESEARCH_MARKET_IDS, type PropertySummary } from "@/lib/contracts";
+import {
+  AvailableSpace as AvailableSpaceContract,
+  Property as PropertyContract,
+  PropertySearchQuery,
+  RESEARCH_MARKET_IDS,
+  type PropertySummary,
+} from "@/lib/contracts";
 import { queryRows } from "./duckdb";
 
 // PropertySearchQuery is exported only as a schema, so the input type is inferred here.
@@ -235,4 +241,196 @@ export async function searchProperties(query: PropertySearchQuery): Promise<Prop
   );
 
   return { items: rows.map(toSummary), total };
+}
+
+/* -------------------------------------------------------------- DATA-03: detail */
+
+export type Property = z.infer<typeof PropertyContract>;
+export type AvailableSpace = z.infer<typeof AvailableSpaceContract>;
+
+interface PropertyRow extends SummaryRow {
+  property_subtype: string | null;
+  building_rating: number | null;
+  construction_status: string | null;
+  gross_area_sf: number | null;
+  stories: number | null;
+  lot_value: number | null;
+  lot_unit: string | null;
+  zoning_description: string | null;
+  year_built: number | null;
+  year_renovated: number | null;
+  parking_ratio_per_1000_sf: number | null;
+  retail_gla_sf: number | null;
+  retail_ceiling_height_ft: number | null;
+  retail_frontage: { street: string | null; feet: number | null; curb_cuts: number | null; is_primary: boolean | null }[] | null;
+  submarket_id: number | null;
+  model_ids: string[] | null;
+  current_tenant_count: number;
+  sale_comp_count: number;
+}
+
+/** Full profile for one property. Returns null when the id is not in the kit. */
+export async function getProperty(id: number): Promise<Property | null> {
+  const rows = await queryRows<PropertyRow>(
+    `${AGGREGATES},
+     detail AS (
+       SELECT b.*,
+         (SELECT count(*)::INT FROM tenants_current t WHERE t.property_id = b.id) AS current_tenant_count,
+         (SELECT count(*)::INT FROM comps c WHERE c.property_id = b.id)           AS sale_comp_count,
+         (SELECT list(DISTINCT m.model_id) FROM matterport_models m WHERE m.property_id = b.id) AS model_ids
+       FROM base b WHERE b.id = ?
+     )
+     SELECT * FROM detail`,
+    [id] as never,
+  );
+  if (rows.length === 0) return null;
+  const row = rows[0];
+  const summary = toSummary(row);
+
+  return {
+    ...summary,
+    researchMarketId: row.research_market_id,
+    submarketId: row.submarket_id,
+    propertySubtype: row.property_subtype,
+    buildingRating: row.building_rating,
+    constructionStatus: row.construction_status ?? "Unknown",
+    grossAreaSf: row.gross_area_sf,
+    stories: row.stories,
+    lot:
+      row.lot_value !== null && (row.lot_unit === "acres" || row.lot_unit === "sqft")
+        ? { value: row.lot_value, unit: row.lot_unit }
+        : null,
+    zoningDescription: row.zoning_description,
+    yearBuilt: row.year_built,
+    yearRenovated: row.year_renovated,
+    parkingRatioPer1000Sf: row.parking_ratio_per_1000_sf,
+    retail:
+      row.retail_gla_sf !== null || row.retail_ceiling_height_ft !== null
+        ? {
+            glaSf: row.retail_gla_sf,
+            ceilingHeightFt: row.retail_ceiling_height_ft,
+            frontage: (row.retail_frontage ?? []).map((f) => ({
+              street: f.street ?? "",
+              feet: f.feet,
+              curbCuts: f.curb_cuts,
+              isPrimary: f.is_primary,
+            })),
+          }
+        : null,
+    matterportModelIds: row.model_ids ?? [],
+    counts: {
+      availableSpaces: row.available_space_count,
+      currentTenants: row.current_tenant_count,
+      saleComps: row.sale_comp_count,
+    },
+    source: {
+      system: "costar",
+      dataset: "commercial-property",
+      recordId: String(row.id),
+      retrievedAt: new Date().toISOString(),
+    },
+  };
+}
+
+interface SpaceRow {
+  id: number;
+  listing_id: number;
+  property_id: number;
+  listing_type: string | null;
+  suite: string | null;
+  floor: string | null;
+  space_use: string | null;
+  space_type: string | null;
+  sf_min: number | null;
+  sf_max: number | null;
+  rate_low: number | null;
+  rate_high: number | null;
+  rate_basis: string;
+  psf_year_low: number | null;
+  psf_year_high: number | null;
+  service_type: string | null;
+  availability_status: string;
+  available_on: string | null;
+  on_market_date: string | null;
+  model_id: string | null;
+  model_caption: string | null;
+  link_method: "space_floorplan_videokey" | "caption_suite_match" | null;
+}
+
+/**
+ * Advertised spaces at a property. ADVERTISED AVAILABILITY, never confirmed vacancy.
+ *
+ * Matterport links come from two signals, and #53 lets us report both:
+ *   - `space_floorplan_videokey` — the space's own floorPlan names the model. Unambiguous, so
+ *     it wins when both signals exist. 20 spaces kit-wide.
+ *   - `caption_suite_match` — a property attachment caption names this suite. A text heuristic.
+ * Together they cover 125 spaces; caption alone covered 112. Where both exist they never
+ * disagree about the model (0 conflicts kit-wide), so precedence is about reporting provenance
+ * honestly rather than resolving a dispute.
+ *
+ * The caption shown prefers the suite-naming attachment text ("Suite 100 - 9,889SF") over the
+ * space's generic floorPlan caption ("View the Floor Plan"), because that is what a person
+ * reads; `linkMethod` still records how the link was actually established.
+ *
+ * One row per space is guaranteed. A property can hold two scans captioned for the same suite
+ * (space 21903500 / suite 1950 has two), which a plain join would return as a duplicate space.
+ */
+export async function getSpaces(propertyId: number): Promise<AvailableSpace[]> {
+  const rows = await queryRows<SpaceRow>(
+    // DuckDB DATE comes back as a JS Date; the contract's IsoDate wants YYYY-MM-DD.
+    `SELECT s.* EXCLUDE (available_on, on_market_date),
+            s.available_on::VARCHAR   AS available_on,
+            s.on_market_date::VARCHAR AS on_market_date,
+            coalesce(s.floor_plan_video_key, m.model_id)                 AS model_id,
+            coalesce(m.caption, s.floor_plan_caption)                    AS model_caption,
+            CASE
+              WHEN s.floor_plan_video_key IS NOT NULL THEN 'space_floorplan_videokey'
+              WHEN m.model_id IS NOT NULL             THEN 'caption_suite_match'
+            END                                                          AS link_method
+     FROM spaces s
+     LEFT JOIN matterport_models m
+       ON m.property_id = s.property_id
+      AND m.matched_suite = s.suite_norm
+      AND m.link_method = 'caption_suite_match'
+     WHERE s.property_id = ?
+     QUALIFY row_number() OVER (PARTITION BY s.id ORDER BY m.model_id NULLS LAST) = 1
+     ORDER BY s.suite NULLS LAST, s.id`,
+    [propertyId] as never,
+  );
+
+  return rows.map((row) => ({
+    id: row.id,
+    listingId: row.listing_id,
+    propertyId: row.property_id,
+    listingType: row.listing_type ?? "Unknown",
+    suite: row.suite,
+    floor: row.floor,
+    spaceUse: row.space_use ?? "Unknown",
+    spaceType: row.space_type,
+    sfMin: row.sf_min,
+    sfMax: row.sf_max,
+    askingRent: {
+      low: row.rate_low,
+      high: row.rate_high,
+      basis: row.rate_basis as "monthly" | "yearly" | "unknown",
+      psfYearLow: row.psf_year_low,
+      psfYearHigh: row.psf_year_high,
+      serviceType: row.service_type,
+    },
+    availabilityStatus: row.availability_status as "advertised_available" | "lease_pending",
+    availableOn: row.available_on,
+    onMarketDate: row.on_market_date,
+    // CoStar's CDN rejects server-side requests, so the UI goes through our own proxy route.
+    floorPlanImageUrl: null,
+    matterport:
+      row.model_id && row.link_method
+        ? { modelId: row.model_id, linkMethod: row.link_method, caption: row.model_caption ?? "" }
+        : null,
+    source: {
+      system: "costar",
+      dataset: "commercial-listing-summary",
+      recordId: String(row.id),
+      retrievedAt: new Date().toISOString(),
+    },
+  }));
 }

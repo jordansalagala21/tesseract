@@ -15,6 +15,13 @@ Owner: Dev 1 (`lib/market`, `lib/finance`). This is a transparent prototype heur
 
 Every `MarketAnalysis` includes `limitations`, for example "Kit covers CoStar's Matterport-list properties only; no demographic or foot-traffic data."
 
+### How AI-04 turns this into scores (`lib/market/analyze.ts`, `rent.ts`)
+
+- **Comparable rent** is the nearby group with the subject's exact `serviceType` × `spaceUse`, or nothing. With no match, a `missing` evidence item says so; no other use or lease type is substituted. (Near 2600 Travis every published rent is TripleNet Office and no retail space publishes a rate, so Suite 100 has no comparable.)
+- **Industry-group share**: each use maps to CoStar `IndustryType` groups (`peerIndustries`, checked against kit tenant names: gyms → Arts/entertainment/recreation, cafés and restaurants → Accommodation and food services, clinics → Health care). The market score uses the group's share of nearby tenants with a known industry, only when at least 10 are known, and labels it "a broad industry group, not exact competitors". Coworking has no usable group.
+- **Complementary neighbours**: tenants in industries whose staff or visitors are likely customers (`complementIndustries`, mostly office-type groups).
+- Exact same-category counts (`sameCategoryNearby`) need tenant names, which DATA-07 does not return yet.
+
 ## 2. Rent normalization (see kit `concepts/metrics-and-formulas.md`)
 
 ```

@@ -195,3 +195,27 @@ describe("contract compatibility", () => {
     }
   });
 });
+
+describe("industry-group market signal", () => {
+  const share = (count: number, knownTotal: number) =>
+    scoreUse({ use: "cafe", site: travis, market: { sameIndustryNearby: fact({ count, knownTotal, industries: ["AccommodationAndFoodServices"] }, "ev_ind") } }).scores.market;
+
+  it.each([
+    [0, 100, 55],
+    [15, 108, 80],
+    [25, 100, 65],
+    [40, 100, 45],
+  ])("%s of %s known tenants → %s", (count, total, expected) => {
+    expect(share(count, total).score).toBe(expected);
+  });
+
+  it("ignores a sample too thin to read", () => {
+    expect(share(3, 9).score).toBeNull();
+  });
+
+  it("labels the count as a broad group, never as competitors", () => {
+    const m = share(15, 108);
+    expect(m.rationale).toContain("a broad industry group, not exact competitors");
+    expect(m.evidenceIds).toEqual(["ev_ind"]);
+  });
+});

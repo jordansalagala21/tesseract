@@ -9,7 +9,7 @@
  * the scores and numbers are deterministic, the model only chooses what to evaluate.
  */
 import { z } from "zod";
-import { FinancialScenarioInput, type AgentToolName, type FinancialScenario } from "@/lib/contracts";
+import { FinancialScenarioInput, type AgentToolName, type FinancialScenario, type MarketAnalysis } from "@/lib/contracts";
 import { runScenario } from "@/lib/finance";
 import { scoreUse, type MarketSignals, type ScoreResult, type SiteFacts, type UserPreferences, type Weights } from "@/lib/market/scoring";
 import { USE_CATEGORIES, type UseCategory } from "@/lib/market/uses";
@@ -42,6 +42,8 @@ export interface ToolOutput {
   /** Facts about a subject for scoring, keyed by subjectKey(). */
   facts?: Record<string, SiteFacts>;
   market?: Record<string, MarketContext>;
+  /** The dashboard's market analysis for one property (AI-04). Its evidenceIds are draft ids. */
+  marketAnalysis?: MarketAnalysis;
   /** Extra structured data returned to the model (ids, lists). Keep it small. */
   data?: unknown;
 }
@@ -85,6 +87,8 @@ export interface AgentState {
   evidence: EvidenceRegistry;
   facts: Record<string, SiteFacts>;
   market: Record<string, MarketContext>;
+  /** Market analyses by propertyId, evidence ids already registered. */
+  marketAnalyses: Record<number, MarketAnalysis>;
   preferences: UserPreferences;
   weights?: Partial<Weights>;
   scores: Record<string, Partial<Record<UseCategory, ScoreResult>>>;
@@ -226,6 +230,10 @@ function absorb(state: AgentState, out: ToolOutput): ToolResult {
       byUse: { ...state.market[subject]?.byUse, ...byUse },
     };
   }
+  if (out.marketAnalysis) {
+    const a = out.marketAnalysis;
+    state.marketAnalyses[a.propertyId] = { ...a, evidenceIds: a.evidenceIds.map((id) => map.get(id) ?? id) };
+  }
   return {
     summary: out.summary,
     evidenceIds: ids,
@@ -246,7 +254,8 @@ function scoreUses(state: AgentState, input: z.infer<(typeof TOOL_INPUTS)["score
     throw new Error(`No facts gathered for subject ${input.subject}. Load the property profile first.`);
   }
   const site = { ...propertyFacts, ...state.facts[input.subject] };
-  const ctx = state.market[input.subject];
+  // A property's market context applies to every space in it unless the space has its own.
+  const ctx = state.market[input.subject] ?? (parent?.spaceId ? state.market[subjectKey(parent.propertyId)] : undefined);
   const results = input.useCategories.map((use) => {
     const r = scoreUse({
       use,

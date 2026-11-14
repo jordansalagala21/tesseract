@@ -190,6 +190,13 @@ const TOOL_GAP_LABELS: Record<AgentToolName, string> = {
   run_financial_scenario: "Financial scenario",
 };
 
+/** The owner's own property; otherwise the first property analysed (the contract holds one). */
+function pickMarketAnalysis(state: AgentState, request: AnalysisRequest): AnalysisResponse["marketAnalysis"] {
+  const i = request.input;
+  if (i.persona === "owner") return state.marketAnalyses[i.propertyId] ?? null;
+  return Object.values(state.marketAnalyses)[0] ?? null;
+}
+
 export async function runAnalysis(opts: RunOptions): Promise<AnalysisResponse> {
   const now = opts.now ?? nowIso;
   const deps = opts.deps ?? UNAVAILABLE_DEPS;
@@ -200,6 +207,7 @@ export async function runAnalysis(opts: RunOptions): Promise<AnalysisResponse> {
     evidence: new EvidenceRegistry(now),
     facts: {},
     market: {},
+    marketAnalyses: {},
     preferences: {},
     scores: {},
     scenarios: [],
@@ -219,7 +227,7 @@ export async function runAnalysis(opts: RunOptions): Promise<AnalysisResponse> {
     evidence: state.evidence.all(),
     evidenceIndex: state.evidence.index(),
     opportunities: status === "completed" ? buildOpportunities(report, state, request) : [],
-    marketAnalysis: null,
+    marketAnalysis: pickMarketAnalysis(state, request),
     financialScenarios: [...state.scenarios],
     toolCalls: [...toolCalls],
     disclaimers: [...STANDARD_DISCLAIMERS],

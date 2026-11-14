@@ -7,9 +7,20 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { AnalysisRequest, AnalysisResponse } from "@/lib/contracts";
 import { STANDARD_DISCLAIMERS } from "@/lib/contracts";
 import { agentEnv } from "@/lib/config/env";
+import { getNearbyContext } from "@/lib/data/nearby";
+import { nearbyContextDep } from "./market-tool";
 import { runAnalysis } from "./orchestrator";
 import { saveAnalysis } from "./store";
-import type { DataDeps } from "./tools";
+import { UNAVAILABLE_DEPS, type DataDeps } from "./tools";
+
+/**
+ * Data modules connected so far. The rest fail honestly until INT-02 wires them
+ * (search and profile need DATA-02/03, imagery needs DATA-04/05 plus visionDeps).
+ */
+export const DEFAULT_DEPS: DataDeps = {
+  ...UNAVAILABLE_DEPS,
+  getNearbyContext: nearbyContextDep({ getNearbyContext }),
+};
 
 /** The queued record shown while the analysis starts. */
 export function queuedAnalysis(id: string, request: AnalysisRequest): AnalysisResponse {
@@ -32,7 +43,7 @@ export function queuedAnalysis(id: string, request: AnalysisRequest): AnalysisRe
 }
 
 /** Run one analysis to completion, saving progress as it goes. Never throws. */
-export async function executeAnalysis(id: string, request: AnalysisRequest, deps?: DataDeps): Promise<void> {
+export async function executeAnalysis(id: string, request: AnalysisRequest, deps: DataDeps = DEFAULT_DEPS): Promise<void> {
   try {
     const env = agentEnv();
     const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });

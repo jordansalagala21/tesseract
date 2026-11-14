@@ -37,7 +37,13 @@ export interface SiteFacts {
 /** Market context from the kit (AI-04). Counts cover kit buildings only, not a census. */
 export interface MarketSignals {
   comparableRent?: Fact<{ medianPsfYear: number; n: number; serviceType: string | null }>;
+  /** Exact same-category businesses nearby (needs tenant names; not produced from industry groups). */
   sameCategoryNearby?: Fact<number>;
+  /**
+   * Tenants in this use's broad CoStar industry group (lib/market/uses.ts peerIndustries), out of
+   * nearby tenants with a known industry. A group share, not a competitor count.
+   */
+  sameIndustryNearby?: Fact<{ count: number; knownTotal: number; industries: string[] }>;
   complementaryNearby?: Fact<number>;
   sameCategoryInBuilding?: Fact<{ count: number; names: string[] }>;
 }
@@ -193,6 +199,15 @@ function access(req: UseRequirements, site: SiteFacts): ScoreComponent {
   return component(f, "no frontage, curb-cut, parking or corner evidence relevant to this use.");
 }
 
+/** Below this many tenants with a known industry, a group share says nothing. */
+export const MIN_INDUSTRY_SAMPLE = 10;
+
+/** "AccommodationAndFoodServices" → "Accommodation and food services". */
+export function industryLabel(industry: string): string {
+  const words = industry.replace(/([a-z])([A-Z])/g, "$1 $2");
+  return words.charAt(0) + words.slice(1).toLowerCase();
+}
+
 function market(req: UseRequirements, signals: MarketSignals | undefined, blockers: Blocker[]): ScoreComponent {
   const f: Factor[] = [];
   const s = signals ?? {};
@@ -203,6 +218,18 @@ function market(req: UseRequirements, signals: MarketSignals | undefined, blocke
     // Some nearby peers suggest proven demand; many suggest saturation. A heuristic, labelled as such.
     const score = n === 0 ? 65 : n <= 2 ? 85 : n <= 5 ? 60 : 35;
     f.push({ label: `${n} similar business${n === 1 ? "" : "es"} nearby (${scope})`, score, evidenceIds: [s.sameCategoryNearby.evidenceId] });
+  }
+  if (s.sameIndustryNearby && s.sameIndustryNearby.value.knownTotal >= MIN_INDUSTRY_SAMPLE) {
+    const { count, knownTotal, industries } = s.sameIndustryNearby.value;
+    const share = count / knownTotal;
+    // Some presence suggests the area supports this kind of business; a large share suggests a
+    // crowded cluster. Heuristic thresholds over a broad group, labelled as such.
+    const score = share === 0 ? 55 : share <= 0.15 ? 80 : share <= 0.3 ? 65 : 45;
+    f.push({
+      label: `${count} of ${knownTotal} nearby tenants with a known industry are in ${industries.map(industryLabel).join(" / ")} (a broad industry group, not exact competitors; ${scope}; heuristic)`,
+      score,
+      evidenceIds: [s.sameIndustryNearby.evidenceId],
+    });
   }
   if (s.complementaryNearby) {
     const n = s.complementaryNearby.value;

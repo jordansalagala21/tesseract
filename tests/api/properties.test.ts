@@ -59,3 +59,22 @@ describeDb("GET /api/properties — results (requires a built DuckDB)", () => {
     expect(performance.now() - started).toBeLessThan(300);
   });
 });
+
+describe("GET /api/properties — database not built", () => {
+  test("returns 503 with the build command, not a bare 500", async () => {
+    const original = process.env.DUCKDB_PATH;
+    process.env.DUCKDB_PATH = "./data/definitely-not-built.duckdb";
+    const { closeDb: close } = await import("@/lib/data/duckdb");
+    await close();
+    try {
+      const response = await call("?q=travis");
+      expect(response.status).toBe(503);
+      const body = await response.json();
+      expect(() => ApiError.parse(body)).not.toThrow();
+      expect(body.error.message).toContain("npm run db:build");
+    } finally {
+      process.env.DUCKDB_PATH = original;
+      await close();
+    }
+  });
+});

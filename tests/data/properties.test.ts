@@ -84,6 +84,47 @@ describeDb("searchProperties (requires a built DuckDB)", () => {
     expect(result).toEqual({ items: [], total: 0 });
   });
 
+  describe("address matching", () => {
+    // All four phrasings name the same building. An owner types whichever they have.
+    test.each([
+      "2600 Travis St",
+      "2600 Travis Street",
+      "2600 travis st, houston",
+      "Travis 2600",
+    ])("finds 1018657 for %j", async (q) => {
+      const result = await searchProperties(query({ q, limit: 100 }));
+      expect(result.items.map((p) => p.id)).toContain(1018657);
+    });
+
+    test("requires every token, so an unrelated token excludes the match", async () => {
+      const result = await searchProperties(query({ q: "2600 Travis Dallas" }));
+      expect(result).toEqual({ items: [], total: 0 });
+    });
+
+    test("ignores punctuation and repeated spaces", async () => {
+      const result = await searchProperties(query({ q: "  2600,,  travis.  st  " }));
+      expect(result.items.map((p) => p.id)).toContain(1018657);
+    });
+
+    test("treats % and _ as literal characters, not wildcards", async () => {
+      expect(await searchProperties(query({ q: "%" }))).toEqual({ items: [], total: 0 });
+      expect(await searchProperties(query({ q: "_" }))).toEqual({ items: [], total: 0 });
+      expect(await searchProperties(query({ q: "travis%" }))).toEqual({ items: [], total: 0 });
+    });
+
+    test("does not mangle a street whose name contains a suffix word", async () => {
+      // "Broadway" contains "road". Canonicalizing without word boundaries would make it
+      // "Brdway" and lose both of these buildings.
+      const result = await searchProperties(query({ q: "Broadway", includeMultifamily: "true", limit: 100 }));
+      expect(result.items.map((p) => p.id)).toContain(249138);
+    });
+
+    test("matches a long suffix form against short-form stored data", async () => {
+      const short = await searchProperties(query({ q: "3201 Broadway", includeMultifamily: "true" }));
+      expect(short.items.map((p) => p.id)).toContain(249138);
+    });
+  });
+
   test("a single quote in the search text is not an injection", async () => {
     const result = await searchProperties(query({ q: "o'brien' OR 1=1 --" }));
     expect(result.total).toBe(0);

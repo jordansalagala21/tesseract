@@ -37,6 +37,67 @@ interface SummaryRow {
   has_suite_matched_3d: boolean;
 }
 
+/**
+ * Long form → the short form CoStar actually stores. Verified against the kit: `st` 764,
+ * `ave` 682, `dr` 548, `blvd` 456, `rd` 380, `pky` 96, `ln` 69, `fwy` 56 — note `pky`, not
+ * `pkwy`. One map drives both sides of the match, so they cannot drift apart.
+ */
+const SUFFIX_CANONICAL: Record<string, string> = {
+  street: "st",
+  avenue: "ave",
+  boulevard: "blvd",
+  drive: "dr",
+  road: "rd",
+  lane: "ln",
+  parkway: "pky",
+  freeway: "fwy",
+  highway: "hwy",
+  place: "pl",
+  court: "ct",
+  circle: "cir",
+  trail: "trl",
+  terrace: "ter",
+  square: "sq",
+  north: "n",
+  south: "s",
+  east: "e",
+  west: "w",
+  northeast: "ne",
+  northwest: "nw",
+  southeast: "se",
+  southwest: "sw",
+};
+
+/**
+ * The text a query is matched against: name, street, city, state and postcode, lower-cased,
+ * with punctuation flattened and long suffix forms canonicalized.
+ *
+ * The canonicalization is word-bounded on purpose. "Broadway" contains "road", so an unbounded
+ * replace would store it as "brdway" and lose every Broadway building.
+ */
+const SEARCH_HAYSTACK_SQL = Object.entries(SUFFIX_CANONICAL).reduce(
+  (expr, [long, short]) => `regexp_replace(${expr}, '\b${long}\b', '${short}', 'g')`,
+  "regexp_replace(lower(concat_ws(' ', name, street, city, state, postcode)), '[^a-z0-9]+', ' ', 'g')",
+);
+
+/**
+ * Split a user's query into match tokens: lower-cased, punctuation dropped, suffixes
+ * canonicalized, and `%`/`_`/`\` escaped so they are literal rather than wildcards.
+ * Every token must match, so word order and extra words like the city do not matter.
+ */
+export function searchTokens(q: string): string[] {
+  return q
+    .toLowerCase()
+    // Keep % and _ inside the token: they are escaped below so they match literally.
+    // Stripping them instead would quietly turn "travis%" into a successful "travis" search.
+    .replace(/[^a-z0-9%_]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter((token) => token.length > 0)
+    .map((token) => SUFFIX_CANONICAL[token] ?? token)
+    .map((token) => token.replace(/[\%_]/g, (char) => `\${char}`));
+}
+
 const MARKET_BY_RESEARCH_ID = new Map<number, keyof typeof RESEARCH_MARKET_IDS>(
   Object.entries(RESEARCH_MARKET_IDS).map(([market, id]) => [id, market as keyof typeof RESEARCH_MARKET_IDS]),
 );
@@ -123,9 +184,12 @@ export async function searchProperties(query: PropertySearchQuery): Promise<Prop
     params.push(query.propertyType);
   }
   if (query.q) {
-    // Parameterized, so a quote in the search text is data and not SQL.
-    where.push("concat_ws(' ', name, street, city, state, postcode) ILIKE ?");
-    params.push(`%${query.q}%`);
+    // Every token must appear, in any order. Still fully parameterized, so a quote in the
+    // search text is data and not SQL, and ESCAPE makes a typed % or _ literal.
+    for (const token of searchTokens(query.q)) {
+      where.push(`${SEARCH_HAYSTACK_SQL} ILIKE ? ESCAPE '\'`);
+      params.push(`%${token}%`);
+    }
   }
   if (query.hasAvailableSpace !== undefined) {
     where.push(query.hasAvailableSpace ? "available_space_count > 0" : "available_space_count = 0");

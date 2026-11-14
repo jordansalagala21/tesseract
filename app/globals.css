@@ -132,7 +132,8 @@
    Follows the system appearance; the .dark class still works. */
 :root {
   --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-inter), system-ui, sans-serif;
-  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", var(--font-inter-tight), system-ui, sans-serif;
+  /* Archivo, set slightly expanded, gives headlines an architectural-signage feel; body stays on the system font. */
+  --font-display: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
   --background: #f4f5f3;
   --foreground: #16201d;
   --card: #ffffff;
@@ -188,31 +189,8 @@
   --plan-grid: #222c28;
 }
 
-/* Homepage floor plan: drafting-paper dots, one plan redrawn as three uses */
-.plan-sheet {
+/* Drafting-paper dots behind the entry-card previews */
+.plan-dots {
   background-image: radial-gradient(var(--plan-grid) 1px, transparent 1.3px);
   background-size: 16px 16px;
-}
-
-.plan-variant {
-  opacity: 0;
-  stroke: var(--primary);
-  stroke-width: 2.5;
-  stroke-dasharray: 1;
-  animation: plan-cycle 12s infinite both;
-}
-.plan-v2 { animation-delay: -8s; }
-.plan-v3 { animation-delay: -4s; }
-
-@keyframes plan-cycle {
-  0% { opacity: 0; stroke-dashoffset: 1; }
-  4% { opacity: 1; }
-  14% { stroke-dashoffset: 0; }
-  30% { opacity: 1; stroke-dashoffset: 0; }
-  33%, 100% { opacity: 0; stroke-dashoffset: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .plan-variant { animation: none; stroke-dashoffset: 0; }
-  .plan-v1 { opacity: 1; }
 }

@@ -1,16 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Geist_Mono, Inter, Inter_Tight } from "next/font/google";
+import { Archivo, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 
-// Apple devices use SF Pro from the system stack; Inter and Inter Tight cover everyone else.
+// Body: SF Pro on Apple devices from the system stack, Inter elsewhere.
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const interTight = Inter_Tight({
-  variable: "--font-inter-tight",
+// Headlines: Archivo with its width axis, used slightly expanded.
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin"],
+  axes: ["wdth"],
 });
 
 const geistMono = Geist_Mono({
@@ -34,7 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${interTight.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${archivo.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

@@ -1,6 +1,7 @@
 import { EntryPoints } from "@/components/home/EntryPoints";
 import { ExampleOpportunity } from "@/components/home/ExampleOpportunity";
 import { HeroTransformations } from "@/components/home/HeroTransformations";
+import { SiteHeader } from "@/components/site/SiteHeader";
 
 // Counts verified from the CoStar hackathon kit (docs/DATA_SOURCES.md).
 const proofPoints = [
@@ -12,12 +13,7 @@ const proofPoints = [
 export default function Home() {
   return (
     <div className="mx-auto flex w-full max-w-[1200px] flex-1 flex-col px-4 sm:px-8">
-      <header className="flex h-16 items-center">
-        <span className="flex items-center gap-2.5 text-[17px] font-semibold tracking-tight">
-          <BrandMark />
-          Tesseract
-        </span>
-      </header>
+      <SiteHeader />
 
       <main className="flex flex-1 flex-col gap-20 py-10 lg:gap-28 lg:py-16">
         <section className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-14">
@@ -53,16 +49,5 @@ export default function Home() {
         is not confirmed vacancy.
       </footer>
     </div>
-  );
-}
-
-// A tesseract drawn as two offset squares joined at the corners.
-function BrandMark() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-6 text-primary" fill="none" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
-      <rect x="3" y="7" width="13" height="13" rx="1.5" />
-      <rect x="8" y="3" width="13" height="13" rx="1.5" />
-      <path d="M3 7 8 3M16 7l5-4M3 20l5-4M16 20l5-4" />
-    </svg>
   );
 }

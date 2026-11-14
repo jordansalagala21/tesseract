@@ -10,6 +10,12 @@ const describeDb = describe.skipIf(!existsSync(dbPath));
 
 const TRAVIS = 1018657;
 
+/** Direct DB reads for assertions about what the module should have filtered. */
+async function rows<T>(sql: string): Promise<T[]> {
+  const { queryRows } = await import("@/lib/data/duckdb");
+  return queryRows<T>(sql);
+}
+
 afterAll(async () => {
   await closeDb();
 });
@@ -80,6 +86,75 @@ describeDb("getNearbyContext (requires a built DuckDB)", () => {
     expect(serviceTotal).toBe(context.comparableSpaces.count);
     expect(useTotal).toBe(context.comparableSpaces.count);
     expect(industryTotal).toBe(context.nearbyTenants.count);
+  });
+
+  test("excludes multifamily buildings from comparable spaces", async () => {
+    // 7 of the spaces in the Travis radius sit in apartment buildings. A retail owner
+    // comparing against apartment asking rents would be misled.
+    const context = await getNearbyContext(TRAVIS, 1000);
+    const ids = context.comparableSpaces.propertyIds;
+    const [{ multifamily }] = await rows<{ multifamily: number }>(
+      `SELECT count(*)::INT multifamily FROM properties
+       WHERE is_multifamily AND id IN (${ids.join(",") || "-1"})`,
+    );
+    expect(multifamily).toBe(0);
+  });
+
+  test("groups rent by service type and space use", async () => {
+    const { comparableSpaces: cs } = await getNearbyContext(TRAVIS, 1000);
+    expect(cs.rentGroups.length).toBeGreaterThan(1);
+    for (const group of cs.rentGroups) {
+      expect(typeof group.serviceType).toBe("string");
+      expect(typeof group.spaceUse).toBe("string");
+      expect(group.withPublishedRate).toBeLessThanOrEqual(group.count);
+      if (group.withPublishedRate > 0) {
+        expect(group.askingRentPsfYear.min!).toBeLessThanOrEqual(group.askingRentPsfYear.median!);
+        expect(group.askingRentPsfYear.median!).toBeLessThanOrEqual(group.askingRentPsfYear.max!);
+      } else {
+        expect(group.askingRentPsfYear).toEqual({ min: null, median: null, max: null });
+      }
+    }
+  });
+
+  test("the groups account for every comparable space", async () => {
+    const { comparableSpaces: cs } = await getNearbyContext(TRAVIS, 1000);
+    expect(cs.rentGroups.reduce((n, g) => n + g.count, 0)).toBe(cs.count);
+    expect(cs.rentGroups.reduce((n, g) => n + g.withPublishedRate, 0)).toBe(cs.withPublishedRate);
+  });
+
+  test("shows that the only published rents near Travis are office, not retail", async () => {
+    // The blended range reads $18, which looks like a comparable for Travis's $45 retail.
+    // Grouped, every one of the 14 published rents is TripleNet/Office, and the retail spaces
+    // publish no rate at all. "No retail evidence here" is the honest answer, and only the
+    // grouping can say it.
+    const { comparableSpaces: cs } = await getNearbyContext(TRAVIS, 1000);
+    const rated = cs.rentGroups.filter((g) => g.withPublishedRate > 0);
+    expect(rated).toHaveLength(1);
+    expect(rated[0]).toMatchObject({
+      serviceType: "TripleNet",
+      spaceUse: "Office",
+      count: 14,
+      withPublishedRate: 14,
+      askingRentPsfYear: { min: 18, median: 18, max: 18 },
+    });
+
+    const retail = cs.rentGroups.filter((g) => g.spaceUse === "Retail");
+    expect(retail.length).toBeGreaterThan(0);
+    for (const group of retail) {
+      expect(group.withPublishedRate).toBe(0);
+      expect(group.askingRentPsfYear).toEqual({ min: null, median: null, max: null });
+    }
+  });
+
+  test("min, median and max all describe the same rate basis", async () => {
+    // Previously min/median came from psf_year_low while max came from psf_year_high, so the
+    // three numbers did not describe the same thing.
+    const { comparableSpaces: cs } = await getNearbyContext(TRAVIS, 1000);
+    const [{ low_max }] = await rows<{ low_max: number }>(
+      `SELECT max(psf_year_low) low_max FROM spaces s JOIN properties p ON p.id = s.property_id
+       WHERE NOT p.is_multifamily AND s.property_id IN (${cs.propertyIds.join(",") || "-1"})`,
+    );
+    expect(cs.askingRentPsfYear.max).toBe(low_max);
   });
 
   test("sale comps report how many disclosed a price", async () => {

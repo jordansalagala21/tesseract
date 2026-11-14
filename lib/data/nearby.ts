@@ -27,6 +27,14 @@ export interface NumericRange {
   max: number | null;
 }
 
+export interface RentGroup {
+  serviceType: string;
+  spaceUse: string;
+  count: number;
+  withPublishedRate: number;
+  askingRentPsfYear: NumericRange;
+}
+
 export interface NearbyContext {
   propertyId: number;
   radiusMeters: number;
@@ -35,11 +43,23 @@ export interface NearbyContext {
   propertyIds: number[];
   comparableSpaces: {
     count: number;
-    /** Of those, how many published a rate — the denominator behind the range. */
+    /** Of those, how many published a rate — the denominator behind every range below. */
     withPublishedRate: number;
+    /**
+     * Overall range across all comparable spaces, kept for the MarketAnalysis contract.
+     * It MIXES space uses, so do not compare a subject's retail rent against it — use the
+     * matching entry in `rentGroups` instead.
+     */
     askingRentPsfYear: NumericRange;
+    /**
+     * Rent by serviceType x spaceUse. A TripleNet retail rent and a FullService office rent
+     * are not comparable (CLAUDE.md §6.6), and near 2600 Travis the blended median is mostly
+     * office, which would understate retail by more than half.
+     */
+    rentGroups: RentGroup[];
     serviceTypes: { serviceType: string; count: number }[];
     spaceUses: { spaceUse: string; count: number }[];
+    /** The non-multifamily properties these spaces came from. */
     propertyIds: number[];
   };
   nearbyTenants: {
@@ -64,6 +84,7 @@ function emptyContext(propertyId: number, radiusMeters: number): NearbyContext {
       count: 0,
       withPublishedRate: 0,
       askingRentPsfYear: EMPTY_RANGE,
+      rentGroups: [],
       serviceTypes: [],
       spaceUses: [],
       propertyIds: [],
@@ -100,6 +121,14 @@ export async function getNearbyContext(
   const propertyIds = neighbours.map((r) => r.id);
   const idList = propertyIds.join(",");
 
+  // Comparable spaces come from NON-MULTIFAMILY properties only: 83% of the kit is apartments,
+  // and an apartment asking rent is not a comparable for commercial space.
+  const COMPARABLE = `FROM spaces s
+     JOIN properties p ON p.id = s.property_id
+     WHERE NOT p.is_multifamily AND s.property_id IN (${idList})`;
+
+  // One rate basis throughout: psf_year_low for min, median AND max, so the three numbers
+  // describe the same thing. Mixing low for min/median with high for max did not.
   const [spaceStats] = await queryRows<{
     count: number;
     with_rate: number;
@@ -108,24 +137,58 @@ export async function getNearbyContext(
     max: number | null;
   }>(
     `SELECT count(*)::INT AS count,
-            count(psf_year_low)::INT AS with_rate,
-            min(psf_year_low) AS min,
-            median(psf_year_low) AS median,
-            max(psf_year_high) AS max
-     FROM spaces WHERE property_id IN (${idList})`,
+            count(s.psf_year_low)::INT AS with_rate,
+            min(s.psf_year_low) AS min,
+            median(s.psf_year_low) AS median,
+            max(s.psf_year_low) AS max
+     ${COMPARABLE}`,
   );
+
+  const comparablePropertyIds = (
+    await queryRows<{ property_id: number }>(
+      `SELECT DISTINCT s.property_id ${COMPARABLE} ORDER BY s.property_id`,
+    )
+  ).map((row) => row.property_id);
+
+  interface GroupRow {
+    serviceType: string;
+    spaceUse: string;
+    count: number;
+    with_rate: number;
+    min: number | null;
+    median: number | null;
+    max: number | null;
+  }
+  const groupRows = await queryRows<GroupRow>(
+    `SELECT coalesce(s.service_type, 'Unknown') AS "serviceType",
+            coalesce(s.space_use, 'Unknown')    AS "spaceUse",
+            count(*)::INT AS count,
+            count(s.psf_year_low)::INT AS with_rate,
+            min(s.psf_year_low) AS min,
+            median(s.psf_year_low) AS median,
+            max(s.psf_year_low) AS max
+     ${COMPARABLE}
+     GROUP BY 1, 2
+     ORDER BY count DESC, 1, 2`,
+  );
+  const rentGroups: RentGroup[] = groupRows.map((row) => ({
+    serviceType: row.serviceType,
+    spaceUse: row.spaceUse,
+    count: row.count,
+    withPublishedRate: row.with_rate,
+    askingRentPsfYear:
+      row.with_rate > 0 ? { min: row.min, median: row.median, max: row.max } : EMPTY_RANGE,
+  }));
 
   // Service type and space use are coalesced rather than dropped, so the breakdowns always
   // add up to `count` and no space goes silently missing from the evidence.
   const serviceTypes = await queryRows<{ serviceType: string; count: number }>(
-    `SELECT coalesce(service_type, 'Unknown') AS "serviceType", count(*)::INT AS count
-     FROM spaces WHERE property_id IN (${idList})
-     GROUP BY 1 ORDER BY count DESC, 1`,
+    `SELECT coalesce(s.service_type, 'Unknown') AS "serviceType", count(*)::INT AS count
+     ${COMPARABLE} GROUP BY 1 ORDER BY count DESC, 1`,
   );
   const spaceUses = await queryRows<{ spaceUse: string; count: number }>(
-    `SELECT coalesce(space_use, 'Unknown') AS "spaceUse", count(*)::INT AS count
-     FROM spaces WHERE property_id IN (${idList})
-     GROUP BY 1 ORDER BY count DESC, 1`,
+    `SELECT coalesce(s.space_use, 'Unknown') AS "spaceUse", count(*)::INT AS count
+     ${COMPARABLE} GROUP BY 1 ORDER BY count DESC, 1`,
   );
   const byIndustry = await queryRows<{ industry: string; count: number }>(
     `SELECT coalesce(industry_type, 'Unknown') AS industry, count(*)::INT AS count
@@ -151,9 +214,10 @@ export async function getNearbyContext(
         spaceStats.with_rate > 0
           ? { min: spaceStats.min, median: spaceStats.median, max: spaceStats.max }
           : EMPTY_RANGE,
+      rentGroups,
       serviceTypes,
       spaceUses,
-      propertyIds,
+      propertyIds: comparablePropertyIds,
     },
     nearbyTenants: {
       count: byIndustry.reduce((n, row) => n + row.count, 0),

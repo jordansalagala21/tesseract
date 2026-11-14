@@ -215,7 +215,8 @@ export async function buildDb(options: BuildDbOptions): Promise<BuildDbResult> {
         WHERE toDate IS NULL OR try_cast(toDate AS DATE) > current_date
       ),
       companies AS (
-        SELECT id, name, suite, numEmployees FROM ${jsonSource(options.kitDir, "company-detail")}
+        SELECT id, name, suite, numEmployees, profile
+        FROM ${jsonSource(options.kitDir, "company-detail")}
       )
       SELECT
         o.id::INT                                             AS occupancy_id,
@@ -224,7 +225,14 @@ export async function buildDb(options: BuildDbOptions): Promise<BuildDbResult> {
         -- LEFT JOIN: only 9,344 of the 11,179 current tenancies name a tenant location.
         c.name                                                AS tenant_name,
         c.suite                                               AS tenant_suite,
-        ${sqlEnum(enums, "IndustryType", "o.industryType")}   AS industry_type,
+        -- The kit is explicit (models/company-detail.md:25,101, location-occupancy.md:29):
+        -- use the COMPANY's profile.industryType for a known tenant; the occupancy's
+        -- industryType is only meaningful for an unknown tenant. Occupancy alone covers just
+        -- 77 of 11,191 current tenancies; the company profile lifts that to 7,872.
+        coalesce(
+          ${sqlEnum(enums, "IndustryType", "c.profile.industryType")},
+          ${sqlEnum(enums, "IndustryType", "o.industryType")}
+        )                                                     AS industry_type,
         ${sqlEnum(enums, "LeaseType", "o.leaseType")}         AS lease_type,
         try_cast(o.fromDate AS DATE)                          AS from_date,
         try_cast(o.moveInDate AS DATE)                        AS move_in_date,

@@ -1,9 +1,10 @@
 // Component preview for the analysis UI (UI-05 onwards) until the real analysis flow (INT-04) exists.
 // Step 1 is the contract fixture; later steps are UI-state examples only and say so on the page.
 import type { Metadata } from "next";
-import type { AgentToolCall } from "@/lib/contracts";
+import type { AgentToolCall, Opportunity } from "@/lib/contracts";
 import { travisAnalysisFixture } from "@/lib/contracts/examples/travis";
 import { AgentTimeline } from "@/components/analysis/AgentTimeline";
+import { OpportunityReveal } from "@/components/analysis/OpportunityReveal";
 import { SiteHeader } from "@/components/site/SiteHeader";
 
 export const metadata: Metadata = { title: "Analysis preview | Tesseract", robots: { index: false } };
@@ -91,6 +92,33 @@ const uiStateSteps: AgentToolCall[] = [
   },
 ];
 
+// UI-state example: an acquisition idea where nothing could be scored, to show the investor grouping
+// and how empty scores render. Not derived from any data.
+const exampleAcquisition: Opportunity = {
+  id: "demo_opp_buy",
+  rank: 2,
+  title: "Example: buy and re-tenant the building",
+  useCategory: "multi_tenant_retail",
+  propertyId: 1018657,
+  spaceId: null,
+  strategy: "acquisition",
+  verdict: "insufficient_evidence",
+  summary: "Example card showing an idea the agent couldn’t score: there is no sale listing or price for this property.",
+  scores: {
+    physical: { score: null, rationale: "Example: building-level condition not assessed.", evidenceIds: [] },
+    market: { score: null, rationale: "Example: no demand data in the sponsor kit.", evidenceIds: [] },
+    access: { score: null, rationale: "Example: not assessed for acquisition.", evidenceIds: [] },
+    economic: { score: null, rationale: "Example: no asking price, so no cap rate.", evidenceIds: [] },
+    overall: null,
+  },
+  supportingEvidenceIds: [],
+  blockers: [],
+  unknowns: ["Asking price", "Seller’s operating statements"],
+  likelyChanges: [],
+  nextSteps: ["Ask the owner whether the property is for sale"],
+  financialScenarioIds: [],
+};
+
 export default function AnalysisPreviewPage() {
   const a = travisAnalysisFixture;
   return (
@@ -104,11 +132,16 @@ export default function AnalysisPreviewPage() {
           </p>
         </div>
         <p role="note" className="rounded-2xl border border-dashed border-muted-foreground/40 px-4 py-3 text-[15px] leading-snug text-muted-foreground">
-          <span className="font-semibold text-foreground">Sample data.</span> Step 1 is the 2600 Travis St development
-          fixture. Steps 2 to 7 are example states (done, failed, running, waiting, skipped) for checking the design.
-          None of this is live agent output.
+          <span className="font-semibold text-foreground">Sample data.</span> Step 1 and the first opportunity are the
+          2600 Travis St development fixture. Steps 2 to 7 and the “Example” acquisition card are example states for
+          checking the design. None of this is live agent output.
         </p>
         <AgentTimeline toolCalls={[...a.toolCalls, ...uiStateSteps]} evidence={a.evidence} status="running" />
+        <OpportunityReveal opportunities={a.opportunities} evidence={a.evidence} persona="owner" />
+        <div className="flex flex-col gap-3">
+          <p className="text-[15px] font-medium text-muted-foreground">Investor view: buying and leasing stay separate</p>
+          <OpportunityReveal opportunities={[...a.opportunities, exampleAcquisition]} evidence={a.evidence} persona="investor" />
+        </div>
       </main>
     </div>
   );

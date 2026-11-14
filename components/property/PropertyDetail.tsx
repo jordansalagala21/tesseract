@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { AvailableSpace, Property } from "@/lib/contracts";
 import { PropertyDetailResponse } from "@/lib/contracts";
 import type { z } from "zod";
@@ -88,7 +89,15 @@ export function SpaceList({ spaces, note }: { spaces: AvailableSpace[]; note: st
                     </p>
                     {details && <p className="mt-0.5 text-[15px] leading-snug text-muted-foreground">{details.charAt(0).toUpperCase() + details.slice(1)}</p>}
                     <div className="mt-2.5 flex flex-wrap gap-1.5">
-                      {s.matterport && <Chip tone="accent">3D tour of this suite</Chip>}
+                      {s.matterport && (
+                        <Link
+                          href={`?model=${encodeURIComponent(s.matterport.modelId)}#tour`}
+                          scroll={false}
+                          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <Chip tone="accent">View 3D tour of this suite</Chip>
+                        </Link>
+                      )}
                       {s.floorPlanImageUrl && <Chip>Floor plan</Chip>}
                       {s.availabilityStatus === "lease_pending" && <Chip>Lease pending</Chip>}
                     </div>

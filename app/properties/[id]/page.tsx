@@ -3,15 +3,18 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { PropertyFacts, SpaceList, TenantList } from "@/components/property/PropertyDetail";
 import { SampleDataBanner } from "@/components/property/SampleDataBanner";
+import { MatterportViewer } from "@/components/viewer/MatterportViewer";
+import { toTourOptions } from "@/components/viewer/tours";
 import { getPropertyPage } from "../property-data";
 
-export default async function PropertyPage({ params }: PageProps<"/properties/[id]">) {
-  const { id } = await params;
+export default async function PropertyPage({ params, searchParams }: PageProps<"/properties/[id]">) {
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
   const propertyId = Number(id);
   if (!Number.isInteger(propertyId) || propertyId <= 0) notFound();
 
   const { detail, spaces, sample } = await getPropertyPage(propertyId);
   const p = detail.property;
+  const tours = toTourOptions(detail.matterportModels, spaces.items, p.matterportModelIds);
 
   return (
     <>
@@ -32,6 +35,8 @@ export default async function PropertyPage({ params }: PageProps<"/properties/[i
         </p>
       </div>
       {sample && <SampleDataBanner />}
+      {/* key: a suite's "View 3D tour" link changes ?model=, which remounts the viewer on that scan */}
+      <MatterportViewer key={String(sp.model)} tours={tours} initialModelId={typeof sp.model === "string" ? sp.model : undefined} />
       <PropertyFacts property={p} />
       <SpaceList spaces={spaces.items} note={spaces.availabilityNote} />
       <TenantList tenants={detail.currentTenants} recorded={p.counts.currentTenants} sample={sample} />

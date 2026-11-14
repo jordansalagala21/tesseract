@@ -68,6 +68,8 @@ Four components, each 0–100 or **null**:
   - `possible` if 50–69
   - `unlikely` if below 50
   - `insufficient_evidence` if overall is null
+- Blockers are **hard** (cap the verdict: ≥70 becomes `possible`, 50–69 becomes `unlikely`), e.g. an upper floor for a use that needs a ground floor, a ceiling below the use's minimum, or a space under half the minimum size; or **soft** (shown, verdict unchanged), e.g. a same-category competitor already in the building.
+- A factor is scored only when its fact is known; unknown is never treated as bad. Use requirements live in `lib/market/uses.ts` and are planning heuristics, not codes or market data.
 - Weights are user-adjustable in the UI (UI-10). The LLM explains scores and never sets them.
 
 ## 5. Financial scenarios (`lib/finance`)

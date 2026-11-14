@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { PropertyFacts, SpaceList, TenantList } from "@/components/property/PropertyDetail";
 import { SampleDataBanner } from "@/components/property/SampleDataBanner";
+import { AerialViewer } from "@/components/viewer/AerialViewer";
 import { MatterportViewer } from "@/components/viewer/MatterportViewer";
 import { toTourOptions } from "@/components/viewer/tours";
 import { getPropertyPage } from "../property-data";
@@ -37,6 +38,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
       {sample && <SampleDataBanner />}
       {/* key: a suite's "View 3D tour" link changes ?model=, which remounts the viewer on that scan */}
       <MatterportViewer key={String(sp.model)} tours={tours} initialModelId={typeof sp.model === "string" ? sp.model : undefined} />
+      <AerialViewer images={detail.aerial} />
       <PropertyFacts property={p} />
       <SpaceList spaces={spaces.items} note={spaces.availabilityNote} />
       <TenantList tenants={detail.currentTenants} recorded={p.counts.currentTenants} sample={sample} />

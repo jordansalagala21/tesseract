@@ -57,6 +57,15 @@ describe("data-integrity rules are enforced by schemas", () => {
     expect(AnalysisResponse.safeParse(bad).success).toBe(false);
   });
 
+  it("accepts both Matterport suite link methods and rejects unknown ones", () => {
+    const base = travisSpaces.find((s) => s.matterport)!;
+    for (const linkMethod of ["space_floorplan_videokey", "caption_suite_match"] as const) {
+      expect(AvailableSpace.safeParse({ ...base, matterport: { ...base.matterport!, linkMethod } }).success).toBe(true);
+    }
+    expect(
+      AvailableSpace.safeParse({ ...base, matterport: { ...base.matterport!, linkMethod: "address_guess" } }).success,
+    ).toBe(false);
+  });
   it("aerial imageUrl must be an internal proxy path", () => {
     expect(AerialImagery.safeParse({ ...travisOrtho, imageUrl: "https://api.vexcelgroup.com/x" }).success).toBe(false);
   });

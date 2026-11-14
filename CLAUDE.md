@@ -50,7 +50,7 @@ Read `docs/DATA_SOURCES.md` before touching data. Key facts:
 - **CoStar is a static kit, not an API.** 8 JSONL datasets, ~3,339 properties (Houston 1,758 / LA 1,581), **83% apartments**. Load into DuckDB. Kit path from `COSTAR_KIT_DIR`; field docs in `$COSTAR_KIT_DIR/models/*.md`; enums in `$COSTAR_KIT_DIR/schemas/enums.json`.
 - **Availability ≠ vacancy.** Listings are *advertised availability*. **Never label anything "vacant".** UI copy: "Advertised available".
 - No demographics, foot traffic, POI census, zoning rules, submarket statistics, or construction costs in sponsor data.
-- Only 122 advertised non-apartment spaces have a suite-matched Matterport model (caption text match).
+- Only ~110 advertised non-apartment spaces (78 properties) have a suite-matched Matterport model by caption text match, plus 20 with a direct `floorPlan.videoKey` link. Active spaces come from the listing's `listingStatus = 1` (there is no `dateOffMarket`). Field-path gotchas: `docs/DATA_SOURCES.md`.
 - **Matterport**: GraphQL `POST https://api.matterport.com/api/models/graph` (HTTP Basic key:token). Embed: `https://my.matterport.com/show/?m=<id>` works in an iframe. SDK key allowed domain = **localhost only**. Asset URLs are signed, expire ~1 h.
 - **Vexcel v2**: `https://api.vexcelgroup.com/v2/` with header **`x-api-key`** (not `token=`, not Bearer). Working: `ortho/collections`, `oriented/collections`, `ortho/extract`, `oriented/extract` (POLYGON wkt, `product-type=oblique-north|south|east|west`). API sends `X-Frame-Options: DENY` → always proxy through our server. Images are watermarked "© Vexcel Imaging US, Inc." — keep attribution. Storage/ML terms unconfirmed.
 - Scanned Matterport area ≠ leasable area (Suite 100: 8,879 scanned vs 9,889 SF advertised).
@@ -127,6 +127,7 @@ construction-cost estimates · zoning/code verification · writing Mattertags or
 
 - Stay inside your owned directories (§5). Shared files (`package.json`, `lib/contracts/*`, `CLAUDE.md`) change only in small, dedicated PRs.
 - Adding a dependency? Mention it in the PR; rebase right before merging to resolve `package-lock.json` cleanly (`npm install` then commit the lockfile).
+- If CI fails at `npm ci` with "Missing: @emnapi/… from lock file", a macOS `npm install` dropped Linux-only optional packages. Fix: `rm -rf node_modules package-lock.json && npm install`, run `npm run check`, commit the lockfile.
 - Don't reformat files you aren't changing. Don't rename/move others' files.
 - New shadcn components go in `components/ui/` (Dev 3 only).
 

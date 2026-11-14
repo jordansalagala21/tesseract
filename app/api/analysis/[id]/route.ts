@@ -1,6 +1,10 @@
-// OWNER: Developer 1 — implement in AI-01. Contract: AnalysisResponse (lib/contracts/api.ts)
-import { notImplemented } from "@/lib/http";
+// OWNER: Developer 1 (AI-01). Contract: AnalysisGetResponse (lib/contracts/api.ts)
+import { getAnalysis } from "@/lib/agent/store";
+import { apiError } from "@/lib/http";
 
-export async function GET() {
-  return notImplemented("GET /api/analysis/[id]", "AI-01");
+export async function GET(_request: Request, ctx: RouteContext<"/api/analysis/[id]">) {
+  const { id } = await ctx.params;
+  const analysis = getAnalysis(id);
+  if (!analysis) return apiError(404, "not_found", `No analysis ${id}. Analyses live in memory and reset when the server restarts.`);
+  return Response.json(analysis, { headers: { "cache-control": "no-store" } });
 }

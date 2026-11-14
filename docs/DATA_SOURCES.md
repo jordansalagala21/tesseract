@@ -14,7 +14,7 @@ This file summarizes the feasibility study (`costar-hackathon-kit/feasibility-re
 |---|---|---|---|
 | Commercial property | `data/commercial-property.jsonl` | 3,339 | `id` (PropertyId) |
 | Commercial listing summary | `data/commercial-listing-summary.jsonl` | 1,022 (741 Active) | `id` |
-| Location occupancy (tenancies) | `data/location-occupancy.jsonl` | 74,093 | `id`; `toDate == null` → current |
+| Location occupancy (tenancies) | `data/location-occupancy.jsonl` | 74,093 | `id`; current = no `toDate` key, or `toDate` after today (the key is absent, not null, on open tenancies) |
 | Company detail (tenants) | `data/company-detail.jsonl` | 49,575 | `id` = `tenantLocationId` |
 | Commercial sale comp | `data/commercial-sale-comp.jsonl` | 6,120 | `id` |
 | Apartment listing | `data/apartment-listing.jsonl` | 1,747 | `propertyId` |
@@ -41,14 +41,23 @@ This file summarizes the feasibility study (`costar-hackathon-kit/feasibility-re
 | Flex | 31 |
 
 - All 3,339 properties are geocoded.
-- Active on-market lease spaces (no `dateOffMarket`): 3,955, of which 3,610 are non-apartment. 2,196 have a rate and 1,400 have a floor-plan image.
-- Advertised non-apartment spaces with a suite-matched Matterport caption: **122, across 85 properties** (9 of them retail-type).
+- Active on-market lease spaces (parent listing `listingStatus = 1`): 3,955, of which 3,610 are non-apartment. 2,196 have a rate and 1,400 have a floor-plan image.
+- Advertised non-apartment spaces with a suite-matched Matterport caption: **110, across 78 properties** (count from `lib/data/matching.ts`, pinned by `tests/data/build-db.test.ts`; an earlier hand count said 122 / 85).
+- A further direct link exists on 20 spaces: the space's own `floorPlan.videoKey`. Where both signals exist (7 spaces) they always agree. Contract value: `space_floorplan_videokey`.
 - Active non-apartment sale listings: 56 (30 with an asking price, 4 with a cap rate).
 - Sale comps on non-apartment properties: 1,270 (639 with a price). Always carry `salePriceStatus`.
 
 **Field gotchas:**
 - Available is not vacant (`models/commercial-listing-summary.md`).
 - A rate of `0` means no rate recorded.
+- **Real field paths** (verified in DATA-01, #51):
+  - geocoding: `primaryAddress.latitude/longitude` (fallback `addresses[0]`), not top level
+  - space rate: `rateLow` / `rateHigh`, not `rate`
+  - space area: `squareFeetMin` / `squareFeetMax`, not `availableSpaceSquareFeet`
+  - floor: `floorName` is an integer `FloorName` enum (24 = FirstFloor), not a floor number
+- **Active status:** `dateOffMarket` doesn't exist on spaces, so don't filter on it. Use the parent listing's `listingStatus = 1`. `isLeasePending` is the only source of `lease_pending`.
+- **Portfolio sales:** when a comp has several `entities`, `soldForPrice` is the whole sale. Never show it as one property's price (DuckDB keeps it in `portfolio_sold_for_price`).
+- **Duplicates:** the kit repeats some attachments and comp entities. The DuckDB build deduplicates them.
 - `rateBasis`: 1 = Monthly, 2 = Yearly. Normalize to $/SF/yr.
 - Always keep `serviceType` (TripleNet, FullServiceGross, PlusElectric, …). Rents are not comparable across service types.
 - Retail area is `propertyRetail.grossLeasableAreaSquareFeet`.

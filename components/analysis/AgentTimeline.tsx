@@ -95,9 +95,9 @@ export function AgentTimeline({
                     </p>
                   )}
                   {call.evidenceIds.length > 0 && (
-                    <ul aria-label="Evidence from this step" className="mt-2.5 flex flex-wrap gap-1.5">
+                    <ul aria-label="Evidence from this step" className="-mx-2.5 mt-2 grid gap-0.5 md:grid-cols-2">
                       {call.evidenceIds.map((id) => (
-                        <li key={id} className="max-w-full">
+                        <li key={id} className="min-w-0">
                           <EvidenceChip id={id} evidence={byId.get(id)} onSelect={onEvidenceSelect} />
                         </li>
                       ))}

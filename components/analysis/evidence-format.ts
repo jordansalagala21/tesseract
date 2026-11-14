@@ -45,6 +45,25 @@ const SYSTEMS: Record<SourceRef["system"], string> = {
 
 export const systemLabel = (s: SourceRef["system"]) => SYSTEMS[s];
 
+const DATASETS: Record<string, string> = {
+  "commercial-property": "CoStar property",
+  "commercial-listing-summary": "CoStar listing",
+  "location-occupancy": "CoStar tenants",
+  "company-detail": "CoStar tenants",
+  "commercial-sale-comp": "CoStar sale comps",
+};
+
+/** Where a statement came from, named the way a person would say it: "CoStar listing", "Matterport scan". */
+export function sourceLabel(e: Pick<Evidence, "kind" | "sources">): string {
+  const ref = e.sources[0];
+  if (!ref) return e.kind === "user_assumption" ? "Your input" : "Not in the data";
+  if (ref.system === "costar") return (ref.dataset && DATASETS[ref.dataset]) ?? "CoStar";
+  if (ref.system === "matterport") return "Matterport scan";
+  if (ref.system === "vexcel") return "Vexcel aerial";
+  if (ref.system === "user") return "Your input";
+  return SYSTEMS[ref.system];
+}
+
 /** A source reference as readable rows: dataset, record, field. Skips what the reference doesn't carry. */
 export function sourceRows(ref: SourceRef): { label: string; value: string }[] {
   const rows: { label: string; value: string }[] = [];

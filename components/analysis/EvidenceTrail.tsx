@@ -3,7 +3,8 @@ import type { Evidence } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
 import { safeEmbedUrl } from "@/components/viewer/tours";
 import { EVIDENCE_KINDS } from "./EvidenceChip";
-import { bucketEvidence, cleanStatement, formatValue, sourceRows, systemLabel } from "./evidence-format";
+import { Notice } from "@/components/ui/notice";
+import { bucketEvidence, cleanStatement, formatValue, sourceLabel, sourceRows, systemLabel } from "./evidence-format";
 
 type Index = Parameters<typeof bucketEvidence>[1];
 
@@ -21,15 +22,9 @@ function Item({ e, selected }: { e: Evidence; selected: boolean }) {
       </div>
 
       {e.kind === "ai_observation" && (
-        <div className="mt-3 flex flex-col gap-1.5 rounded-xl bg-warning/12 px-3 py-2.5 text-sm leading-snug">
-          <p>
-            <span className="font-semibold">Caveat: </span>
-            {e.caveat}
-          </p>
-          <p className="text-muted-foreground">
-            Seen by {e.model}, {e.confidence} confidence.
-          </p>
-        </div>
+        <Notice tone="warning" title="AI observation, not an inspection" className="mt-3">
+          {e.caveat} Seen by {e.model}, {e.confidence} confidence.
+        </Notice>
       )}
 
       {e.kind === "user_assumption" && (
@@ -77,30 +72,35 @@ function Item({ e, selected }: { e: Evidence; selected: boolean }) {
         </ul>
       )}
 
-      {e.sources.length > 0 ? (
-        <ul aria-label="Sources" className="mt-3 flex flex-col gap-2 border-t pt-3">
-          {e.sources.map((s, i) => {
-            const rows = sourceRows(s);
-            return (
-              <li key={i} className="text-sm leading-snug">
-                <p className="font-semibold">Source: {systemLabel(s.system)}</p>
-                {rows.length > 0 && (
-                  <dl className="mt-1 grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-muted-foreground">
-                    {rows.map((r) => (
-                      <div key={r.label} className="contents">
-                        <dt>{r.label}</dt>
-                        <dd className="font-mono text-xs leading-5 break-words text-foreground">{r.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        e.kind !== "user_assumption" && <p className="mt-3 border-t pt-3 text-sm text-muted-foreground">No data source: this is a gap, not a finding.</p>
-      )}
+      <div className="mt-3 border-t pt-3 text-sm">
+        <p>
+          <span className="text-muted-foreground">Source: </span>
+          <span className="font-medium">{sourceLabel(e)}</span>
+          {e.sources[0]?.recordId && <span className="text-muted-foreground"> {e.sources[0].recordId}</span>}
+        </p>
+        {e.sources.some((s) => sourceRows(s).length > 0) && (
+          <details className="mt-1.5">
+            <summary className="-mx-1 flex h-11 w-fit cursor-pointer items-center rounded-md px-1 text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              Technical reference
+            </summary>
+            {e.sources.map((s, i) => (
+              <dl key={i} className="mt-1 grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-muted-foreground">
+                <dt>System</dt>
+                <dd className="text-foreground">{systemLabel(s.system)}</dd>
+                {sourceRows(s).map((r) => (
+                  <div key={r.label} className="contents">
+                    <dt>{r.label}</dt>
+                    <dd className="font-mono text-xs leading-5 break-words text-foreground">{r.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ))}
+          </details>
+        )}
+        {e.sources.length === 0 && e.kind !== "user_assumption" && (
+          <p className="mt-1 text-muted-foreground">No data source: this is a gap, not a finding.</p>
+        )}
+      </div>
     </li>
   );
 }

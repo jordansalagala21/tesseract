@@ -5,6 +5,7 @@ import type { AgentToolCall, Opportunity } from "@/lib/contracts";
 import { travisAnalysisFixture } from "@/lib/contracts/examples/travis";
 import { AnalysisResults } from "@/components/analysis/AnalysisResults";
 import { PageHeader, PageShell } from "@/components/site/PageShell";
+import { Notice } from "@/components/ui/notice";
 
 export const metadata: Metadata = { title: "Analysis preview | Tesseract", robots: { index: false } };
 
@@ -123,11 +124,7 @@ export default function AnalysisPreviewPage() {
   return (
     <PageShell>
         <PageHeader title="Analysis preview" description="Shows how analysis results will look before the agent is connected." />
-        <p role="note" className="rounded-2xl border border-dashed border-muted-foreground/40 px-4 py-3 text-base leading-snug text-muted-foreground">
-          <span className="font-semibold text-foreground">Sample data.</span> Step 1 and the first opportunity are the
-          2600 Travis St development fixture. Steps 2 to 7 and the “Example” acquisition card are example states for
-          checking the design. None of this is live agent output.
-        </p>
+        <Notice title="Sample data">Step 1 and the first opportunity are the 2600 Travis St development fixture. Steps 2 to 7 and the “Example” acquisition card are example states for checking the design. None of this is live agent output.</Notice>
         <AnalysisResults analysis={{ ...a, status: "running", toolCalls: [...a.toolCalls, ...uiStateSteps] }} />
         <div className="flex flex-col gap-3">
           <p className="text-base font-medium text-muted-foreground">Investor view: buying and leasing stay separate</p>

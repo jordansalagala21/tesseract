@@ -4,6 +4,7 @@ import { travisAnalysisFixture } from "@/lib/contracts/examples/travis";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { VERDICTS } from "@/components/analysis/opportunity-format";
+import { sourceLabel } from "@/components/analysis/evidence-format";
 
 const KINDS: { kind: Evidence["kind"]; label: string; dot: string }[] = [
   { kind: "verified_fact", label: "Verified fact", dot: "bg-primary" },
@@ -56,17 +57,19 @@ export function ExampleOpportunity() {
           })}
         </dl>
 
-        <ul className="mt-5 flex flex-col gap-2 border-t pt-4">
+        <ul className="mt-5 flex flex-col gap-3 border-t pt-4">
           {KINDS.map(({ kind, label, dot }) => {
             const ev = firstOfKind(kind);
             if (!ev) return null;
             return (
-              <li key={kind} className="flex gap-3 text-base leading-snug">
-                <span className="mt-1.5 flex w-32 shrink-0 items-center gap-1.5 text-sm font-medium text-muted-foreground">
-                  <span className={cn("size-2 rounded-full", dot)} aria-hidden="true" />
-                  {label}
+              <li key={kind} className="flex gap-2.5">
+                <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", dot)} aria-hidden="true" />
+                <span className="min-w-0">
+                  <span className="block text-sm text-muted-foreground">
+                    {label}, {sourceLabel(ev)}
+                  </span>
+                  <span className="block text-base leading-snug">{clean(ev.statement)}</span>
                 </span>
-                <span className="min-w-0">{clean(ev.statement)}</span>
               </li>
             );
           })}

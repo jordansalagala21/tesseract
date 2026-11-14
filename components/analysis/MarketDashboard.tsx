@@ -1,7 +1,7 @@
 import { useId } from "react";
-import { AlertTriangle } from "lucide-react";
 import type { Evidence, MarketAnalysis } from "@/lib/contracts";
 import { humanize } from "@/components/property/format";
+import { Notice } from "@/components/ui/notice";
 import { EvidenceChip } from "./EvidenceChip";
 import { barRows, formatRadius, money, rentRange } from "./market-format";
 
@@ -76,14 +76,13 @@ export function MarketDashboard({
       </div>
 
       {/* Limitations first and always visible, so the numbers below are read with them in mind. */}
-      <div role="note" className="rounded-2xl border border-dashed border-muted-foreground/40 px-4 py-3">
-        <h3 className="text-base font-semibold">What this can’t tell you</h3>
-        <ul className="mt-1.5 flex list-disc flex-col gap-1 pl-4 text-base leading-snug text-muted-foreground">
+      <Notice title="What this can’t tell you">
+          <ul className="mt-1 flex list-disc flex-col gap-1 pl-4">
           {m.limitations.map((l) => (
             <li key={l}>{l}</li>
           ))}
         </ul>
-      </div>
+        </Notice>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card title="Asking rent nearby" n={m.comparableSpaces.count} unit="advertised spaces">
@@ -123,13 +122,9 @@ export function MarketDashboard({
             <p className="text-base text-muted-foreground">None of these spaces publish an asking rate.</p>
           )}
           {mixedService && (
-            <p className="flex gap-2 rounded-xl bg-warning/12 px-3 py-2.5 text-sm leading-snug">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
-              <span>
-                <span className="font-semibold">Mixed lease types.</span> This range combines triple net and gross rents,
-                which aren’t directly comparable.
-              </span>
-            </p>
+            <Notice tone="warning" title="Mixed lease types">
+              This range combines triple net and gross rents, which aren’t directly comparable.
+            </Notice>
           )}
         </Card>
 

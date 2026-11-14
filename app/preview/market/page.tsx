@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import type { MarketAnalysis } from "@/lib/contracts";
 import { MarketDashboard } from "@/components/analysis/MarketDashboard";
 import { PageHeader, PageShell } from "@/components/site/PageShell";
+import { Notice } from "@/components/ui/notice";
 
 export const metadata: Metadata = { title: "Market preview | Tesseract", robots: { index: false } };
 
@@ -55,10 +56,7 @@ export default function MarketPreviewPage() {
   return (
     <PageShell>
         <PageHeader title="Market preview" description="Shows how market context will look before the market analysis is connected." />
-        <p role="note" className="rounded-2xl border border-dashed border-muted-foreground/40 px-4 py-3 text-base leading-snug text-muted-foreground">
-          <span className="font-semibold text-foreground">Made-up example numbers.</span> Every figure on this page was
-          typed in by hand to check the design. None of it comes from CoStar or any other data.
-        </p>
+        <Notice title="Made-up example numbers">Every figure on this page was typed in by hand to check the design. None of it comes from CoStar or any other data.</Notice>
         <MarketDashboard analysis={exampleMarket} />
         <div className="flex flex-col gap-3 border-t pt-8">
           <p className="text-base font-medium text-muted-foreground">When nothing is nearby</p>

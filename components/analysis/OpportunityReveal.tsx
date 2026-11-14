@@ -1,8 +1,8 @@
 import { useId } from "react";
-import { AlertTriangle } from "lucide-react";
 import type { Evidence, Opportunity, UserPersona } from "@/lib/contracts";
-import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Notice } from "@/components/ui/notice";
+import { cleanStatement } from "./evidence-format";
 import { EvidenceChip } from "./EvidenceChip";
 import { SCORE_PARTS, STRATEGIES, VERDICTS, groupOpportunities, scoreText } from "./opportunity-format";
 
@@ -11,9 +11,9 @@ type ChipProps = { byId: Map<string, Evidence>; onEvidenceSelect?: (id: string) 
 function Chips({ ids, byId, onEvidenceSelect }: ChipProps & { ids: string[] }) {
   if (ids.length === 0) return null;
   return (
-    <ul className="flex flex-wrap gap-1.5">
+    <ul className="-mx-2.5 grid gap-0.5 sm:grid-cols-2">
       {ids.map((id) => (
-        <li key={id} className="max-w-full">
+        <li key={id} className="min-w-0">
           <EvidenceChip id={id} evidence={byId.get(id)} onSelect={onEvidenceSelect} />
         </li>
       ))}
@@ -48,7 +48,7 @@ function OpportunityCard({ opp, titleId, ...chipProps }: ChipProps & { opp: Oppo
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
               <h3 id={titleId} className="text-xl leading-snug font-semibold">
-                {opp.title}
+                {cleanStatement(opp.title)}
               </h3>
               <Badge variant={verdict.variant} className="shrink-0">{verdict.label}</Badge>
             </div>
@@ -87,20 +87,16 @@ function OpportunityCard({ opp, titleId, ...chipProps }: ChipProps & { opp: Oppo
         </div>
 
         {opp.blockers.length > 0 && (
-          <div role="note" className="rounded-2xl border border-destructive/35 bg-destructive/[0.06] p-4">
-            <h4 className="flex items-center gap-2 text-base font-semibold text-destructive">
-              <AlertTriangle className="size-4" aria-hidden="true" />
-              {opp.blockers.length === 1 ? "Blocker" : `${opp.blockers.length} blockers`}
-            </h4>
-            <ul className="mt-2 flex flex-col gap-3">
+          <Notice tone="danger" title={opp.blockers.length === 1 ? "Blocker" : `${opp.blockers.length} blockers`}>
+            <ul className="mt-1 flex flex-col gap-3">
               {opp.blockers.map((b) => (
-                <li key={b.description} className="flex flex-col gap-1.5">
-                  <span className="text-base leading-snug font-medium">{b.description}</span>
+                <li key={b.description} className="flex flex-col gap-1">
+                  <span className="font-medium text-foreground">{b.description}</span>
                   <Chips ids={b.evidenceIds} {...chipProps} />
                 </li>
               ))}
             </ul>
-          </div>
+          </Notice>
         )}
 
         <div className="grid gap-4 sm:grid-cols-3">
@@ -112,7 +108,7 @@ function OpportunityCard({ opp, titleId, ...chipProps }: ChipProps & { opp: Oppo
 
       <footer className="flex flex-col gap-3 border-t px-5 py-4 sm:px-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
-          <h4 className="shrink-0 pt-1 text-base font-semibold">Why?</h4>
+          <h4 className="shrink-0 pt-2 text-base font-semibold">Evidence</h4>
           {opp.supportingEvidenceIds.length > 0 ? (
             <Chips ids={opp.supportingEvidenceIds} {...chipProps} />
           ) : (

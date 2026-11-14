@@ -203,14 +203,16 @@ export async function buildDb(options: BuildDbOptions): Promise<BuildDbResult> {
     tables.spaces = await countRows(connection, "spaces");
 
     // ----------------------------------------------------------- tenants_current
-    // A tenancy is current when `toDate` IS NULL — which covers the 11,179 records that omit
-    // the key entirely. It is never literally null when present, so a JS `=== null` filter
-    // would classify every current tenancy as expired.
+    // A tenancy is current when it has no end date, or when its end date is still ahead of the
+    // build date: 11,179 records omit `toDate` entirely (it is never literally null when
+    // present, so a JS `=== null` filter would match none of them) and 12 more are sitting
+    // tenants with a signed end date in the future.
     log("building tenants_current…");
     await connection.run(`
       CREATE OR REPLACE TABLE tenants_current AS
       WITH occupancy AS (
-        SELECT * FROM ${jsonSource(options.kitDir, "location-occupancy")} WHERE toDate IS NULL
+        SELECT * FROM ${jsonSource(options.kitDir, "location-occupancy")}
+        WHERE toDate IS NULL OR try_cast(toDate AS DATE) > current_date
       ),
       companies AS (
         SELECT id, name, suite, numEmployees FROM ${jsonSource(options.kitDir, "company-detail")}

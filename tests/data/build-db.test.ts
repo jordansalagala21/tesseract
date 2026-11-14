@@ -228,14 +228,32 @@ describeKit("buildDb (requires the sponsor kit)", () => {
   // ------------------------------------------------------------------ Task 6 tables
 
   test("tenants_current holds the current tenancies", () => {
-    expect(result.tables.tenants_current).toBe(11179);
+    // 11,179 with no end date + 12 whose lease ends after the build date.
+    expect(result.tables.tenants_current).toBe(11191);
   });
 
   test("a tenancy is current when toDate is absent, not literally null", async () => {
+    // 11,179 records omit toDate entirely, and it is never literally null when present, so the
+    // SQL IS NULL test is what catches them — a JS `=== null` filter would match none of them.
     const [{ n }] = await rows<{ n: number }>(
-      "SELECT count(*)::INT n FROM tenants_current WHERE to_date IS NOT NULL",
+      "SELECT count(*)::INT n FROM tenants_current WHERE to_date IS NULL",
     );
-    expect(n).toBe(0);
+    expect(n).toBe(11179);
+  });
+
+  test("a tenancy with a known future end date is still current", async () => {
+    // 12 occupancy records end after the build date: sitting tenants with a signed end date.
+    // Keeping only `toDate IS NULL` dropped them from the building's current tenant list.
+    const [{ with_end_date, already_ended }] = await rows<{
+      with_end_date: number;
+      already_ended: number;
+    }>(
+      `SELECT count(*)::INT with_end_date,
+              count(CASE WHEN to_date <= current_date THEN 1 END)::INT already_ended
+       FROM tenants_current WHERE to_date IS NOT NULL`,
+    );
+    expect(with_end_date).toBe(12);
+    expect(already_ended).toBe(0);
   });
 
   test("tenancies without a tenantLocationId survive with a null name", async () => {

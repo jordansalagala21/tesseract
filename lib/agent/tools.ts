@@ -239,8 +239,13 @@ function absorb(state: AgentState, out: ToolOutput): ToolResult {
 }
 
 function scoreUses(state: AgentState, input: z.infer<(typeof TOOL_INPUTS)["score_uses"]>): ToolResult {
-  const site = state.facts[input.subject];
-  if (!site) throw new Error(`No facts gathered for subject ${input.subject}. Load the property profile first.`);
+  // Property-level facts (e.g. aerial observations) apply to every space in the property.
+  const parent = parseSubject(input.subject);
+  const propertyFacts = parent?.spaceId ? state.facts[subjectKey(parent.propertyId)] : undefined;
+  if (!state.facts[input.subject] && !propertyFacts) {
+    throw new Error(`No facts gathered for subject ${input.subject}. Load the property profile first.`);
+  }
+  const site = { ...propertyFacts, ...state.facts[input.subject] };
   const ctx = state.market[input.subject];
   const results = input.useCategories.map((use) => {
     const r = scoreUse({

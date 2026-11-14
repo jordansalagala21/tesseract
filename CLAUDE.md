@@ -127,6 +127,7 @@ construction-cost estimates · zoning/code verification · writing Mattertags or
 
 - Stay inside your owned directories (§5). Shared files (`package.json`, `lib/contracts/*`, `CLAUDE.md`) change only in small, dedicated PRs.
 - Adding a dependency? Mention it in the PR; rebase right before merging to resolve `package-lock.json` cleanly (`npm install` then commit the lockfile).
+- If CI fails at `npm ci` with "Missing: @emnapi/… from lock file", a macOS `npm install` dropped Linux-only optional packages. Fix: `rm -rf node_modules package-lock.json && npm install`, run `npm run check`, commit the lockfile.
 - Don't reformat files you aren't changing. Don't rename/move others' files.
 - New shadcn components go in `components/ui/` (Dev 3 only).
 

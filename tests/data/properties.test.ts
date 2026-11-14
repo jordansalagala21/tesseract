@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { afterAll, describe, expect, test } from "vitest";
 import { PropertySearchQuery, PropertySearchResponse } from "@/lib/contracts";
 import { closeDb } from "@/lib/data/duckdb";
-import { searchProperties } from "@/lib/data/properties";
+import { searchProperties, searchTokens } from "@/lib/data/properties";
 
 // These need the DuckDB built by `npm run db:build`, which CI has no sponsor data for.
 const dbPath = process.env.DUCKDB_PATH?.trim() || "./data/tesseract.duckdb";
@@ -128,5 +128,32 @@ describeDb("searchProperties (requires a built DuckDB)", () => {
   test("a single quote in the search text is not an injection", async () => {
     const result = await searchProperties(query({ q: "o'brien' OR 1=1 --" }));
     expect(result.total).toBe(0);
+  });
+});
+
+describe("searchTokens", () => {
+  test("canonicalizes suffixes and directions", () => {
+    expect(searchTokens("2600 Travis Street")).toEqual(["2600", "travis", "st"]);
+    expect(searchTokens("North Main Avenue")).toEqual(["n", "main", "ave"]);
+  });
+
+  test("escapes LIKE wildcards instead of dropping them", () => {
+    // A template-literal slip once made this emit the literal text "${char}", which matched
+    // nothing and so looked correct in a result-count test. String.raw keeps the expectation
+    // honest about the single backslash we require.
+    expect(searchTokens("travis%")).toEqual([String.raw`travis\%`]);
+    expect(searchTokens("a_b")).toEqual([String.raw`a\_b`]);
+    // A typed backslash is split out as punctuation, so it can never reach the pattern and be
+    // mistaken for the ESCAPE character.
+    expect(searchTokens(String.raw`back\slash`)).toEqual(["back", "slash"]);
+  });
+
+  test("splits on punctuation and collapses whitespace", () => {
+    expect(searchTokens("  2600,,  travis.  st  ")).toEqual(["2600", "travis", "st"]);
+  });
+
+  test("returns no tokens for an empty or punctuation-only query", () => {
+    expect(searchTokens("   ")).toEqual([]);
+    expect(searchTokens("---")).toEqual([]);
   });
 });

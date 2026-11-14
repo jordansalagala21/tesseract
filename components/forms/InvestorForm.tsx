@@ -43,7 +43,7 @@ export function InvestorForm() {
             { value: "either", label: "Either" },
           ]}
         />
-        <p className="-mt-3 text-[13px] text-muted-foreground">Leasing and buying are always analysed and shown separately.</p>
+        <p className="-mt-3 text-sm text-muted-foreground">Leasing and buying are always analysed and shown separately.</p>
         <MarketChoice error={errors.markets} />
         <Field
           name="targetPct"
@@ -59,7 +59,7 @@ export function InvestorForm() {
               placeholder="8"
               className={`${inputClass} pr-9`}
             />
-            <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-[17px] text-muted-foreground">%</span>
+            <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-lg text-muted-foreground">%</span>
           </div>
         </Field>
         <Field name="goals" label="Other goals" optional hint="One per line, for example “steady income”.">
@@ -69,7 +69,7 @@ export function InvestorForm() {
 
       <SubmitStatus state={state} />
       <div className="flex justify-end">
-        <Button type="submit" disabled={state.kind === "sending"} className="h-11 rounded-xl px-6 text-[17px]">
+        <Button type="submit" disabled={state.kind === "sending"} className="h-11 rounded-xl px-6 text-lg">
           {state.kind === "sending" && <Loader2 className="size-4 motion-safe:animate-spin" aria-hidden="true" />}
           Find opportunities
         </Button>

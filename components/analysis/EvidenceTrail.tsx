@@ -16,12 +16,12 @@ function Item({ e, selected }: { e: Evidence; selected: boolean }) {
       className={cn("scroll-mt-4 rounded-2xl border p-4 transition-colors", selected ? "border-primary bg-primary/[0.06]" : "bg-card")}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="text-[15px] leading-snug font-medium">{cleanStatement(e.statement)}</p>
-        {value && <span className="shrink-0 rounded-full bg-muted px-2.5 py-0.5 text-[13px] font-semibold tabular-nums">{value}</span>}
+        <p className="text-base leading-snug font-medium">{cleanStatement(e.statement)}</p>
+        {value && <span className="shrink-0 rounded-full bg-muted px-2.5 py-0.5 text-sm font-semibold tabular-nums">{value}</span>}
       </div>
 
       {e.kind === "ai_observation" && (
-        <div className="mt-3 flex flex-col gap-1.5 rounded-xl bg-amber-500/10 px-3 py-2.5 text-[13px] leading-snug">
+        <div className="mt-3 flex flex-col gap-1.5 rounded-xl bg-warning/12 px-3 py-2.5 text-sm leading-snug">
           <p>
             <span className="font-semibold">Caveat: </span>
             {e.caveat}
@@ -33,11 +33,11 @@ function Item({ e, selected }: { e: Evidence; selected: boolean }) {
       )}
 
       {e.kind === "user_assumption" && (
-        <p className="mt-2 text-[13px] text-muted-foreground">{e.origin === "user" ? "Entered by you." : "A default you accepted."}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{e.origin === "user" ? "Entered by you." : "A default you accepted."}</p>
       )}
 
       {e.kind === "missing" && (
-        <dl className="mt-3 flex flex-col gap-2 text-[13px] leading-snug">
+        <dl className="mt-3 flex flex-col gap-2 text-sm leading-snug">
           <div>
             <dt className="font-semibold">Why it matters</dt>
             <dd className="text-muted-foreground">{e.whyNeeded}</dd>
@@ -63,13 +63,13 @@ function Item({ e, selected }: { e: Evidence; selected: boolean }) {
                     href={href}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium text-primary outline-none hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring"
+                    className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium text-primary outline-none hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {label}
                     <ExternalLink className="size-3.5" aria-hidden="true" />
                   </a>
                 ) : (
-                  <span className="inline-flex rounded-full border px-3 py-1 text-[13px] text-muted-foreground">{label}</span>
+                  <span className="inline-flex rounded-full border px-3 py-1 text-sm text-muted-foreground">{label}</span>
                 )}
               </li>
             );
@@ -82,14 +82,14 @@ function Item({ e, selected }: { e: Evidence; selected: boolean }) {
           {e.sources.map((s, i) => {
             const rows = sourceRows(s);
             return (
-              <li key={i} className="text-[13px] leading-snug">
+              <li key={i} className="text-sm leading-snug">
                 <p className="font-semibold">Source: {systemLabel(s.system)}</p>
                 {rows.length > 0 && (
                   <dl className="mt-1 grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-muted-foreground">
                     {rows.map((r) => (
                       <div key={r.label} className="contents">
                         <dt>{r.label}</dt>
-                        <dd className="font-mono text-[12px] leading-5 break-words text-foreground">{r.value}</dd>
+                        <dd className="font-mono text-xs leading-5 break-words text-foreground">{r.value}</dd>
                       </div>
                     ))}
                   </dl>
@@ -99,7 +99,7 @@ function Item({ e, selected }: { e: Evidence; selected: boolean }) {
           })}
         </ul>
       ) : (
-        e.kind !== "user_assumption" && <p className="mt-3 border-t pt-3 text-[13px] text-muted-foreground">No data source: this is a gap, not a finding.</p>
+        e.kind !== "user_assumption" && <p className="mt-3 border-t pt-3 text-sm text-muted-foreground">No data source: this is a gap, not a finding.</p>
       )}
     </li>
   );
@@ -115,14 +115,14 @@ export function EvidenceTrail({ evidence, evidenceIndex, selectedId }: { evidenc
     <div className="flex flex-col gap-8">
       {buckets.map((b) => (
         <section key={b.kind} aria-labelledby={`bucket-${b.kind}`}>
-          <h3 id={`bucket-${b.kind}`} className="flex items-center gap-2 text-[17px] font-semibold">
+          <h3 id={`bucket-${b.kind}`} className="flex items-center gap-2 text-lg font-semibold">
             <span className={cn("size-2.5 rounded-full", EVIDENCE_KINDS[b.kind].dot)} aria-hidden="true" />
             {b.title}
-            <span className="text-[15px] font-normal text-muted-foreground tabular-nums">{b.items.length}</span>
+            <span className="text-base font-normal text-muted-foreground tabular-nums">{b.items.length}</span>
           </h3>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">{b.blurb}</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">{b.blurb}</p>
           {b.items.length === 0 ? (
-            <p className="mt-3 rounded-2xl border border-dashed px-4 py-3 text-[13px] text-muted-foreground">None for this analysis.</p>
+            <p className="mt-3 rounded-2xl border border-dashed px-4 py-3 text-sm text-muted-foreground">None for this analysis.</p>
           ) : (
             <ul className="mt-3 flex flex-col gap-3">
               {b.items.map((e) => (

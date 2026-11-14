@@ -3,8 +3,8 @@ import { cn } from "@/lib/utils";
 
 export const EVIDENCE_KINDS: Record<Evidence["kind"], { label: string; dot: string }> = {
   verified_fact: { label: "Verified fact", dot: "bg-primary" },
-  ai_observation: { label: "AI observation", dot: "bg-amber-500" },
-  user_assumption: { label: "Your assumption", dot: "bg-sky-500" },
+  ai_observation: { label: "AI observation", dot: "bg-warning" },
+  user_assumption: { label: "Your assumption", dot: "bg-info" },
   missing: { label: "Missing info", dot: "bg-muted-foreground" },
 };
 
@@ -23,7 +23,7 @@ export function EvidenceChip({
 }) {
   const kind = evidence ? EVIDENCE_KINDS[evidence.kind] : undefined;
   const cls =
-    "inline-flex max-w-full items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[13px] leading-4 font-medium text-foreground transition-colors outline-none hover:bg-primary/12 focus-visible:ring-2 focus-visible:ring-ring sm:max-w-[22rem]";
+    "inline-flex max-w-full items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-sm leading-4 font-medium text-foreground transition-colors outline-none hover:bg-primary/12 focus-visible:ring-2 focus-visible:ring-ring sm:max-w-xs";
   const body = (
     <>
       <span className={cn("size-1.5 shrink-0 rounded-full", kind?.dot ?? "bg-muted-foreground")} aria-hidden="true" />

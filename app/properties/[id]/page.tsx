@@ -22,15 +22,15 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
       <div>
         <Link
           href="/properties"
-          className="-ml-1 inline-flex items-center gap-0.5 rounded-md pr-1 text-[17px] text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="-ml-1 inline-flex items-center gap-0.5 rounded-md pr-1 text-lg text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ChevronLeft className="size-5" aria-hidden="true" />
           Properties
         </Link>
-        <h1 className="mt-4 font-heading text-[34px] leading-tight font-bold tracking-tight text-balance">
+        <h1 className="mt-4 font-heading text-3xl leading-tight font-bold tracking-tight text-balance">
           {p.name ?? p.address.street}
         </h1>
-        <p className="mt-1 text-[17px] text-muted-foreground">
+        <p className="mt-1 text-lg text-muted-foreground">
           {p.name ? `${p.address.street}, ` : ""}
           {p.address.city}, {p.address.state} {p.address.postcode}
         </p>

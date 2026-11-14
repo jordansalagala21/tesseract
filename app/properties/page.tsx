@@ -16,8 +16,8 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
   return (
     <>
       <div>
-        <h1 className="font-heading text-[34px] leading-tight font-bold tracking-tight">Find a property</h1>
-        <p className="mt-2 max-w-[38rem] text-[17px] leading-relaxed text-muted-foreground">
+        <h1 className="font-heading text-3xl leading-tight font-bold tracking-tight">Find a property</h1>
+        <p className="mt-2 max-w-measure text-lg leading-relaxed text-muted-foreground">
           Search commercial buildings in Houston and Los Angeles, then open one to see its advertised spaces.
         </p>
       </div>

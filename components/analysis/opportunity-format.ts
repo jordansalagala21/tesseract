@@ -2,7 +2,7 @@ import type { Opportunity, UserPersona } from "@/lib/contracts";
 
 export const VERDICTS: Record<Opportunity["verdict"], { label: string; tone: string }> = {
   promising: { label: "Promising", tone: "bg-primary/12 text-primary" },
-  possible: { label: "Possible", tone: "bg-amber-500/15 text-amber-800 dark:text-amber-300" },
+  possible: { label: "Possible", tone: "bg-warning/12 text-warning-foreground" },
   unlikely: { label: "Unlikely", tone: "bg-muted text-muted-foreground" },
   insufficient_evidence: { label: "Not enough evidence", tone: "border border-dashed border-muted-foreground/50 text-muted-foreground" },
 };

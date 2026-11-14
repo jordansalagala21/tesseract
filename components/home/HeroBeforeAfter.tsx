@@ -45,7 +45,7 @@ function subscribeReduced(onChange: () => void) {
 }
 
 const pill =
-  "inline-block rounded-full bg-black/65 px-2.5 py-1 text-[11px] leading-4 font-medium text-white backdrop-blur-sm sm:px-3 sm:py-1.5 sm:text-[13px]";
+  "inline-block rounded-full bg-scrim px-2.5 py-1 text-xs leading-4 font-medium text-scrim-foreground backdrop-blur-sm sm:px-3 sm:py-1.5 sm:text-sm";
 
 const clamp = (n: number) => Math.min(100, Math.max(0, n));
 
@@ -91,7 +91,7 @@ export function HeroBeforeAfter() {
   };
 
   return (
-    <figure className="relative overflow-hidden rounded-[28px] border bg-muted">
+    <figure className="relative overflow-hidden rounded-2xl border bg-muted">
       <div
         ref={frame}
         className={cn("relative aspect-[4/3] touch-pan-y select-none sm:aspect-[16/9]", hasAfter && "cursor-ew-resize")}
@@ -151,8 +151,8 @@ export function HeroBeforeAfter() {
             )}
             style={{ left: `${pos}%` }}
           >
-            <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.15)]" />
-            <span className="absolute top-1/2 left-1/2 grid size-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white text-[13px] font-semibold text-black shadow-md group-focus-visible:ring-2 group-focus-visible:ring-ring">
+            <span className="absolute inset-y-0 left-1/2 w-0.5 -translate-x-1/2 bg-scrim-foreground shadow-[0_0_0_1px_rgba(0,0,0,0.15)]" />
+            <span className="absolute top-1/2 left-1/2 grid size-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-scrim-foreground text-sm font-semibold text-neutral-900 shadow-sm group-focus-visible:ring-2 group-focus-visible:ring-ring">
               ⇆
             </span>
           </div>
@@ -160,9 +160,9 @@ export function HeroBeforeAfter() {
 
         {/* Evidence labels stay on the image at all times. */}
         <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap items-start justify-between gap-2">
-          <span className={cn(pill, "text-[13px] font-semibold")}>Before · bare shell</span>
+          <span className={cn(pill, "text-sm font-semibold")}>Before · bare shell</span>
           {hasAfter ? (
-            <span className={cn(pill, "text-[13px] font-semibold")}>After · {use.label}</span>
+            <span className={cn(pill, "text-sm font-semibold")}>After · {use.label}</span>
           ) : (
             <span className={pill}>{use.label} concept render coming soon</span>
           )}
@@ -187,7 +187,7 @@ export function HeroBeforeAfter() {
                 setPos(50);
               }}
               className={cn(
-                "h-8 rounded-lg px-3 text-[15px] font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "h-8 rounded-lg px-3 text-base font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 i === index ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
               )}
             >
@@ -195,7 +195,7 @@ export function HeroBeforeAfter() {
             </button>
           ))}
         </div>
-        <p className="text-[13px] text-muted-foreground">{hasAfter ? "Drag to compare" : "Real space, real scan"}</p>
+        <p className="text-sm text-muted-foreground">{hasAfter ? "Drag to compare" : "Real space, real scan"}</p>
       </figcaption>
     </figure>
   );

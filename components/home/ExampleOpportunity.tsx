@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 
 const KINDS: { kind: Evidence["kind"]; label: string; dot: string }[] = [
   { kind: "verified_fact", label: "Verified fact", dot: "bg-primary" },
-  { kind: "ai_observation", label: "AI observation", dot: "bg-amber-500" },
-  { kind: "user_assumption", label: "Your assumption", dot: "bg-sky-500" },
+  { kind: "ai_observation", label: "AI observation", dot: "bg-warning" },
+  { kind: "user_assumption", label: "Your assumption", dot: "bg-info" },
   { kind: "missing", label: "Missing info", dot: "bg-muted-foreground" },
 ];
 
@@ -23,34 +23,34 @@ export function ExampleOpportunity() {
   return (
     <section aria-labelledby="example-heading" className="grid gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-16">
       <div>
-        <h2 id="example-heading" className="font-heading text-[28px] leading-tight font-bold tracking-tight [font-stretch:112%]">
+        <h2 id="example-heading" className="font-heading text-2xl leading-tight font-bold tracking-tight [font-stretch:112%]">
           Every claim shows where it came from.
         </h2>
-        <p className="mt-3 max-w-[30rem] text-[17px] leading-relaxed text-muted-foreground">
+        <p className="mt-3 max-w-measure text-lg leading-relaxed text-muted-foreground">
           Each idea is scored only on evidence the agent found. Facts, AI observations, your assumptions and missing
           information are labelled separately, and a score stays blank when the data can’t support one.
         </p>
       </div>
 
-      <article className="rounded-[24px] border bg-card p-5 sm:p-6">
+      <article className="rounded-2xl border bg-card p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="rounded-full border border-dashed border-muted-foreground/50 px-2.5 py-0.5 text-[12px] font-medium text-muted-foreground">
+          <span className="rounded-full border border-dashed border-muted-foreground/50 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
             Example output, not a real analysis
           </span>
-          <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[13px] font-semibold text-amber-800 capitalize dark:text-amber-300">
+          <span className="rounded-full bg-warning/12 px-2.5 py-0.5 text-sm font-semibold text-warning-foreground capitalize">
             {opp.verdict.replace("_", " ")}
           </span>
         </div>
-        <h3 className="mt-4 text-[20px] leading-snug font-semibold">{clean(opp.title)}</h3>
-        <p className="mt-1 text-[15px] text-muted-foreground">2600 Travis St, Suite 100, Houston</p>
+        <h3 className="mt-4 text-xl leading-snug font-semibold">{clean(opp.title)}</h3>
+        <p className="mt-1 text-base text-muted-foreground">2600 Travis St, Suite 100, Houston</p>
 
         <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
           {(Object.keys(SCORE_LABELS) as (keyof typeof SCORE_LABELS)[]).map((k) => {
             const score = opp.scores[k].score;
             return (
               <div key={k}>
-                <dt className="text-[13px] text-muted-foreground">{SCORE_LABELS[k]}</dt>
-                <dd className={cn("mt-0.5 tabular-nums", score == null ? "text-[13px] leading-5 text-muted-foreground" : "text-[20px] font-semibold")}>
+                <dt className="text-sm text-muted-foreground">{SCORE_LABELS[k]}</dt>
+                <dd className={cn("mt-0.5 tabular-nums", score == null ? "text-sm leading-5 text-muted-foreground" : "text-xl font-semibold")}>
                   {score ?? "Not enough evidence"}
                 </dd>
               </div>
@@ -63,8 +63,8 @@ export function ExampleOpportunity() {
             const ev = firstOfKind(kind);
             if (!ev) return null;
             return (
-              <li key={kind} className="flex gap-3 text-[15px] leading-snug">
-                <span className="mt-1.5 flex w-32 shrink-0 items-center gap-1.5 text-[13px] font-medium text-muted-foreground">
+              <li key={kind} className="flex gap-3 text-base leading-snug">
+                <span className="mt-1.5 flex w-32 shrink-0 items-center gap-1.5 text-sm font-medium text-muted-foreground">
                   <span className={cn("size-2 rounded-full", dot)} aria-hidden="true" />
                   {label}
                 </span>

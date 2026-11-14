@@ -43,16 +43,16 @@ export function EvidenceDrawer({
       aria-labelledby="evidence-drawer-title"
       onClose={onClose}
       onClick={(e) => e.target === e.currentTarget && onClose()}
-      className="fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-none w-full max-w-[34rem] overflow-hidden border-l bg-background p-0 text-foreground backdrop:bg-black/50 sm:rounded-l-[24px]"
+      className="fixed inset-y-0 right-0 left-auto m-0 h-dvh max-h-none w-full max-w-xl overflow-hidden border-l bg-background p-0 text-foreground backdrop:bg-scrim sm:rounded-l-2xl"
     >
       {open && (
         <div className="flex h-full flex-col">
           <header className="flex items-start justify-between gap-4 border-b px-5 py-4">
             <div>
-              <h2 id="evidence-drawer-title" className="text-[20px] font-semibold tracking-tight">
+              <h2 id="evidence-drawer-title" className="text-xl font-semibold tracking-tight">
                 Evidence Trail
               </h2>
-              <p className="mt-0.5 text-[13px] text-muted-foreground">{evidence.length} statements, each with its source.</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">{evidence.length} statements, each with its source.</p>
             </div>
             <button
               type="button"

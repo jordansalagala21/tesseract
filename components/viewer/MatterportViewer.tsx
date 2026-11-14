@@ -25,7 +25,7 @@ export function MatterportViewer({ tours, initialModelId }: { tours: TourOption[
   return (
     <section id="tour" aria-labelledby="tour-heading" className="scroll-mt-6">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 id="tour-heading" className="text-[20px] font-semibold tracking-tight">
+        <h2 id="tour-heading" className="text-xl font-semibold tracking-tight">
           3D tour
         </h2>
         {tours.length > 1 && (
@@ -37,7 +37,7 @@ export function MatterportViewer({ tours, initialModelId }: { tours: TourOption[
                 aria-pressed={t.modelId === activeId}
                 onClick={() => setActiveId(t.modelId)}
                 className={cn(
-                  "h-8 shrink-0 rounded-lg px-3 text-[15px] font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "h-8 shrink-0 rounded-lg px-3 text-base font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   t.modelId === activeId ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -49,11 +49,11 @@ export function MatterportViewer({ tours, initialModelId }: { tours: TourOption[
       </div>
 
       {!tour ? (
-        <p className="rounded-[20px] border bg-card px-5 py-6 text-[15px] text-muted-foreground">
+        <p className="rounded-2xl border bg-card px-5 py-6 text-base text-muted-foreground">
           No Matterport scan is linked to this property in the CoStar data, so there’s no 3D tour.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-[20px] border bg-card">
+        <div className="overflow-hidden rounded-2xl border bg-card">
           <div className="relative aspect-[4/3] bg-muted sm:aspect-video">
             <iframe
               key={tour.modelId}
@@ -67,14 +67,14 @@ export function MatterportViewer({ tours, initialModelId }: { tours: TourOption[
             />
           </div>
           <div className="flex flex-col gap-2 border-t px-5 py-3 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
-            <p className={cn("text-[13px] leading-snug", tour.suiteListed ? "text-muted-foreground" : "font-medium text-foreground")}>
+            <p className={cn("text-sm leading-snug", tour.suiteListed ? "text-muted-foreground" : "font-medium text-foreground")}>
               {matchNote(tour)}
             </p>
             <a
               href={tour.embedUrl}
               target="_blank"
               rel="noreferrer"
-              className="shrink-0 rounded-md text-[13px] font-medium text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="shrink-0 rounded-md text-sm font-medium text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               Open in Matterport
             </a>

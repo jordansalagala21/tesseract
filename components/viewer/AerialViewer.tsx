@@ -17,7 +17,7 @@ export function AerialViewer({ images }: { images: AerialImagery[] }) {
   return (
     <section aria-labelledby="aerial-heading">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 id="aerial-heading" className="text-[20px] font-semibold tracking-tight">
+        <h2 id="aerial-heading" className="text-xl font-semibold tracking-tight">
           Aerial view
         </h2>
         {images.length > 1 && (
@@ -29,7 +29,7 @@ export function AerialViewer({ images }: { images: AerialImagery[] }) {
                 aria-pressed={a.id === activeId}
                 onClick={() => setActiveId(a.id)}
                 className={cn(
-                  "h-8 shrink-0 rounded-lg px-3 text-[15px] font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "h-8 shrink-0 rounded-lg px-3 text-base font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   a.id === activeId ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -41,17 +41,17 @@ export function AerialViewer({ images }: { images: AerialImagery[] }) {
       </div>
 
       {!image ? (
-        <p className="rounded-[20px] border bg-card px-5 py-6 text-[15px] text-muted-foreground">
+        <p className="rounded-2xl border bg-card px-5 py-6 text-base text-muted-foreground">
           No Vexcel aerial image is available for this property yet.
         </p>
       ) : (
-        <figure className="overflow-hidden rounded-[20px] border bg-card">
+        <figure className="overflow-hidden rounded-2xl border bg-card">
           <div className={cn("relative bg-muted", !broken && "aspect-[4/3]")}>
             {broken ? (
               <div className="px-6 py-10 text-center">
                 <ImageOff className="mx-auto size-7 text-muted-foreground" aria-hidden="true" />
-                <p className="mt-3 text-[17px] font-semibold">Aerial image didn’t load</p>
-                <p className="mx-auto mt-1 max-w-md text-[15px] text-muted-foreground">
+                <p className="mt-3 text-lg font-semibold">Aerial image didn’t load</p>
+                <p className="mx-auto mt-1 max-w-md text-base text-muted-foreground">
                   The imagery service isn’t reachable right now, so only the capture details are shown.
                 </p>
               </div>
@@ -72,14 +72,14 @@ export function AerialViewer({ images }: { images: AerialImagery[] }) {
                   className="object-cover"
                   onError={() => setFailed((s) => new Set(s).add(image.id))}
                 />
-                <span className="absolute right-3 bottom-3 inline-flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-[13px] font-medium text-white backdrop-blur">
+                <span className="absolute right-3 bottom-3 inline-flex items-center gap-1.5 rounded-full bg-scrim px-3 py-1.5 text-sm font-medium text-scrim-foreground backdrop-blur">
                   <Expand className="size-3.5" aria-hidden="true" />
                   Enlarge
                 </span>
               </button>
             )}
           </div>
-          <figcaption className="flex flex-wrap gap-x-5 gap-y-1 border-t px-5 py-3 text-[13px] text-muted-foreground">
+          <figcaption className="flex flex-wrap gap-x-5 gap-y-1 border-t px-5 py-3 text-sm text-muted-foreground">
             <span>Captured {formatCaptureRange(image.captureDate)}</span>
             <span>{formatGsd(image.gsdMeters)}</span>
             <span>{image.attribution}</span>
@@ -92,7 +92,7 @@ export function AerialViewer({ images }: { images: AerialImagery[] }) {
           ref={dialogRef}
           aria-label={`${aerialLabel(image)} aerial image`}
           onClick={(e) => e.target === e.currentTarget && e.currentTarget.close()}
-          className="m-auto max-h-[92vh] max-w-[92vw] overflow-hidden rounded-[20px] border bg-card p-0 text-foreground backdrop:bg-black/70"
+          className="m-auto max-h-[92vh] max-w-[92vw] overflow-hidden rounded-2xl border bg-card p-0 text-foreground backdrop:bg-scrim"
         >
           <div className="relative">
             {/* Plain img: the enlarged view should show the full frame at its own aspect ratio */}
@@ -102,12 +102,12 @@ export function AerialViewer({ images }: { images: AerialImagery[] }) {
               type="button"
               onClick={() => dialogRef.current?.close()}
               aria-label="Close enlarged image"
-              className="absolute top-3 right-3 grid size-11 place-items-center rounded-full bg-black/60 text-white backdrop-blur outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="absolute top-3 right-3 grid size-11 place-items-center rounded-full bg-scrim text-scrim-foreground backdrop-blur outline-none focus-visible:ring-2 focus-visible:ring-scrim-foreground"
             >
               <X className="size-5" aria-hidden="true" />
             </button>
           </div>
-          <p className="px-5 py-3 text-[13px] text-muted-foreground">
+          <p className="px-5 py-3 text-sm text-muted-foreground">
             {aerialLabel(image)}, captured {formatCaptureRange(image.captureDate)}. {image.attribution}
           </p>
         </dialog>

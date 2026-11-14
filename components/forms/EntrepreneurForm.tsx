@@ -76,7 +76,7 @@ export function EntrepreneurForm() {
           error={errors.maxRentPsfYear}
         >
           <div className="relative max-w-56">
-            <span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[17px] text-muted-foreground">$</span>
+            <span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-lg text-muted-foreground">$</span>
             <input {...describe("rentAmount", errors.maxRentPsfYear, true)} inputMode="decimal" className={`${inputClass} pl-7`} />
           </div>
         </Field>
@@ -88,7 +88,7 @@ export function EntrepreneurForm() {
 
       <SubmitStatus state={state} />
       <div className="flex justify-end">
-        <Button type="submit" disabled={state.kind === "sending"} className="h-11 rounded-xl px-6 text-[17px]">
+        <Button type="submit" disabled={state.kind === "sending"} className="h-11 rounded-xl px-6 text-lg">
           {state.kind === "sending" && <Loader2 className="size-4 motion-safe:animate-spin" aria-hidden="true" />}
           Find spaces that fit
         </Button>

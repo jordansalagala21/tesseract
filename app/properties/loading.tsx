@@ -7,7 +7,7 @@ export default function Loading() {
         <div className={`${bar} h-9 w-64`} />
         <div className={`${bar} h-5 w-full max-w-md`} />
       </div>
-      <div className="flex flex-col overflow-hidden rounded-[20px] border bg-card">
+      <div className="flex flex-col overflow-hidden rounded-2xl border bg-card">
         {[0, 1, 2].map((i) => (
           <div key={i} className="flex flex-col gap-2 border-b px-5 py-5 last:border-0">
             <div className={`${bar} h-5 w-48`} />

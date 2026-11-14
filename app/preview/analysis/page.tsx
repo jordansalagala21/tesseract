@@ -121,23 +121,23 @@ const exampleAcquisition: Opportunity = {
 export default function AnalysisPreviewPage() {
   const a = travisAnalysisFixture;
   return (
-    <div className="mx-auto flex w-full max-w-[960px] flex-1 flex-col px-4 sm:px-8">
+    <div className="mx-auto flex w-full max-w-page flex-1 flex-col px-4 sm:px-8">
       <SiteHeader />
       <main className="flex flex-col gap-8 pt-6 pb-16 sm:pt-10">
         <div>
-          <h1 className="font-heading text-[34px] leading-tight font-bold tracking-tight">Analysis preview</h1>
-          <p className="mt-2 max-w-[40rem] text-[17px] leading-relaxed text-muted-foreground">
+          <h1 className="font-heading text-3xl leading-tight font-bold tracking-tight">Analysis preview</h1>
+          <p className="mt-2 max-w-measure text-lg leading-relaxed text-muted-foreground">
             Shows how analysis results will look before the agent is connected.
           </p>
         </div>
-        <p role="note" className="rounded-2xl border border-dashed border-muted-foreground/40 px-4 py-3 text-[15px] leading-snug text-muted-foreground">
+        <p role="note" className="rounded-2xl border border-dashed border-muted-foreground/40 px-4 py-3 text-base leading-snug text-muted-foreground">
           <span className="font-semibold text-foreground">Sample data.</span> Step 1 and the first opportunity are the
           2600 Travis St development fixture. Steps 2 to 7 and the “Example” acquisition card are example states for
           checking the design. None of this is live agent output.
         </p>
         <AnalysisResults analysis={{ ...a, status: "running", toolCalls: [...a.toolCalls, ...uiStateSteps] }} />
         <div className="flex flex-col gap-3">
-          <p className="text-[15px] font-medium text-muted-foreground">Investor view: buying and leasing stay separate</p>
+          <p className="text-base font-medium text-muted-foreground">Investor view: buying and leasing stay separate</p>
           <AnalysisResults analysis={{ ...a, persona: "investor", opportunities: [...a.opportunities, exampleAcquisition] }} showTimeline={false} />
         </div>
       </main>

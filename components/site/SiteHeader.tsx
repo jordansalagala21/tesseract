@@ -5,7 +5,7 @@ export function SiteHeader() {
     <header className="flex h-16 items-center">
       <Link
         href="/"
-        className="-mx-1.5 flex items-center gap-2.5 rounded-md px-1.5 py-1 text-[17px] font-semibold tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="-mx-1.5 flex items-center gap-2.5 rounded-md px-1.5 py-1 text-lg font-semibold tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <BrandMark />
         Tesseract

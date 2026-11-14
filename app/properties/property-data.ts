@@ -2,7 +2,6 @@
 // It calls the live routes (DATA-02, DATA-03). While a route still answers 501 Not Implemented,
 // it falls back to the 2600 Travis St contract fixtures and marks the result as sample data.
 import "server-only";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import type { z } from "zod";
 import {
@@ -16,10 +15,12 @@ import { travisOrtho, travisProperty, travisSpaces, travisSuite100Model } from "
 
 export type Loaded<T> = { data: T; sample: boolean };
 
+// Loopback to this same Next.js server. Fixed on purpose: deriving it from the Host header
+// would let a forged request make the server fetch any host (SSRF).
+const ORIGIN = `http://127.0.0.1:${process.env.PORT ?? 3000}`;
+
 async function getJson<S extends z.ZodType>(path: string, schema: S): Promise<z.infer<S> | null> {
-  const h = await headers();
-  const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
-  const res = await fetch(origin + path, { cache: "no-store" });
+  const res = await fetch(ORIGIN + path, { cache: "no-store" });
   if (res.status === 501) return null;
   if (res.status === 404) notFound();
   if (!res.ok) throw new Error(`${path} answered ${res.status}`);

@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { SearchX } from "lucide-react";
+import { ChevronRight, SearchX } from "lucide-react";
 import { EmptyState } from "@/components/ui/states";
 import type { Evidence, Opportunity, UserPersona } from "@/lib/contracts";
 import { Badge } from "@/components/ui/badge";
@@ -118,10 +118,11 @@ function OpportunityCard({ opp, titleId, ...chipProps }: ChipProps & { opp: Oppo
             <p className="pt-1 text-base text-muted-foreground">No supporting evidence was found for this use.</p>
           )}
         </div>
-        <details className="group text-base">
-          <summary className="cursor-pointer rounded-md text-primary outline-none select-none focus-visible:ring-2 focus-visible:ring-ring">
-            How each score was set
-          </summary>
+        <details className="group/d text-base">
+          <summary className="-mx-1 flex h-11 w-fit cursor-pointer items-center gap-1 [&::-webkit-details-marker]:hidden rounded-md px-1 text-primary outline-none select-none focus-visible:ring-2 focus-visible:ring-ring">
+              <ChevronRight className="size-4 transition-transform group-open/d:rotate-90 motion-reduce:transition-none" aria-hidden="true" />
+              How each score was set
+            </summary>
           <ul className="mt-3 flex flex-col gap-3">
             {SCORE_PARTS.map(([key, label]) => {
               const part = opp.scores[key];
@@ -129,7 +130,7 @@ function OpportunityCard({ opp, titleId, ...chipProps }: ChipProps & { opp: Oppo
                 <li key={key} className="flex flex-col gap-1.5">
                   <p className="leading-snug">
                     <span className="font-semibold">{label}: </span>
-                    <span className="text-muted-foreground">{part.rationale}</span>
+                    <span className="text-muted-foreground">{part.rationale.trim() === "FIXTURE-ONLY" ? "Example reason (sample data)." : cleanStatement(part.rationale)}</span>
                   </p>
                   <Chips ids={part.evidenceIds} {...chipProps} />
                 </li>

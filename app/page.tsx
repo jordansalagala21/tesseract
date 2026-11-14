@@ -40,11 +40,11 @@ export default function Home() {
                 </Link>
                 <p className="text-base text-muted-foreground">
                   Or start from{" "}
-                  <Link href="/invest" className="font-medium text-foreground underline underline-offset-4 hover:text-primary">
+                  <Link href="/invest" className="relative font-medium text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-3 hover:text-primary">
                     your budget
                   </Link>{" "}
                   or{" "}
-                  <Link href="/start" className="font-medium text-foreground underline underline-offset-4 hover:text-primary">
+                  <Link href="/start" className="relative font-medium text-foreground underline underline-offset-4 after:absolute after:-inset-x-1 after:-inset-y-3 hover:text-primary">
                     a business idea
                   </Link>
                   .

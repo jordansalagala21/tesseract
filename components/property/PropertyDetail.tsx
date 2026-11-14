@@ -95,7 +95,7 @@ export function SpaceList({ spaces, note }: { spaces: AvailableSpace[]; note: st
                         <Link
                           href={`?model=${encodeURIComponent(s.matterport.modelId)}#tour`}
                           scroll={false}
-                          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="-my-2.5 flex h-11 items-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           <Chip tone="accent">View 3D tour of this suite</Chip>
                         </Link>

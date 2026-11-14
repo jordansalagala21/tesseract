@@ -74,7 +74,7 @@ export function MatterportViewer({ tours, initialModelId }: { tours: TourOption[
               href={tour.embedUrl}
               target="_blank"
               rel="noreferrer"
-              className="shrink-0 rounded-md text-sm font-medium text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="-my-3 inline-flex h-11 shrink-0 items-center rounded-md text-sm font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
             >
               Open in Matterport
             </a>

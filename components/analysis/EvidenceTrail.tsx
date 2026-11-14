@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { ChevronRight, ExternalLink } from "lucide-react";
 import type { Evidence } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
 import { safeEmbedUrl } from "@/components/viewer/tours";
@@ -79,8 +79,9 @@ function Item({ e, selected }: { e: Evidence; selected: boolean }) {
           {e.sources[0]?.recordId && <span className="text-muted-foreground"> {e.sources[0].recordId}</span>}
         </p>
         {e.sources.some((s) => sourceRows(s).length > 0) && (
-          <details className="mt-1.5">
-            <summary className="-mx-1 flex h-11 w-fit cursor-pointer items-center rounded-md px-1 text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <details className="group/d mt-1.5">
+            <summary className="-mx-1 flex h-11 w-fit cursor-pointer items-center gap-1 [&::-webkit-details-marker]:hidden rounded-md px-1 text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <ChevronRight className="size-4 transition-transform group-open/d:rotate-90 motion-reduce:transition-none" aria-hidden="true" />
               Technical reference
             </summary>
             {e.sources.map((s, i) => (

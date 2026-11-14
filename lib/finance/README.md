@@ -1,10 +1,18 @@
 # lib/finance — Financial scenarios (OWNER: Developer 1)
 
-| Planned module | Issue | Responsibility |
-|---|---|---|
-| `lease.ts` | AI-06 | Occupancy cost, break-even revenue for `LeaseScenarioInput` |
-| `acquisition.ts` | AI-06 | NOI, cap rate, cash-on-cash, debt service for `AcquisitionScenarioInput` |
-| `defaults.ts` | AI-06 | Labelled default assumptions (origin `"default"`), each with a stated rationale |
+| Module | Responsibility |
+|---|---|
+| `index.ts` | `runScenario(input, meta)`: dispatches on `mode`; re-exports everything below |
+| `lease.ts` | Occupancy cost, break-even revenue and payback for `LeaseScenarioInput` |
+| `acquisition.ts` | NOI, cap rate, debt service and cash-on-cash for `AcquisitionScenarioInput` |
+| `defaults.ts` | Labelled app defaults (`origin: "default"`), each with a rationale. Not market data |
+| `shared.ts` | Validation, rounding, the fixed disclaimer, default-use warnings |
 
-Pure functions only (no I/O). Every output field is `null` when a required input is missing. Every result lists its formulas.
-Leasing and acquisition are never blended.
+Rules:
+- Pure functions only (no I/O).
+- An output is `null` when an input it needs is missing or impossible, and a warning says why.
+- Every result lists the formulas it actually used. The formulas are in `docs/MARKET_ANALYSIS.md` §5.
+- Leasing and acquisition are never blended: a lease scenario never fills acquisition outputs, and vice versa.
+- No defaults for NNN, rent, price, opex, interest rate, revenue or build-out cost, because a guess would look like a fact.
+
+Route: `POST /api/finance/scenario` (`FinanceScenarioRequest` → `FinancialScenario`).

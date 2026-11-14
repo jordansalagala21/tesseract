@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { Evidence } from "@/lib/contracts";
 import { EvidenceTrail } from "./EvidenceTrail";
 
@@ -54,14 +55,9 @@ export function EvidenceDrawer({
               </h2>
               <p className="mt-0.5 text-sm text-muted-foreground">{evidence.length} statements, each with its source.</p>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close Evidence Trail"
-              className="grid size-11 shrink-0 place-items-center rounded-full outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
-            >
+            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close Evidence Trail" className="shrink-0">
               <X className="size-5" aria-hidden="true" />
-            </button>
+            </Button>
           </header>
           <div className="flex-1 overflow-y-auto px-5 py-5">
             <EvidenceTrail evidence={evidence} evidenceIndex={evidenceIndex} selectedId={selectedId} />

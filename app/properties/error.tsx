@@ -12,7 +12,7 @@ export default function PropertiesError({ error, retry }: { error: unknown; retr
       <p className="mx-auto mt-1 max-w-sm text-base text-muted-foreground">
         The property service returned an error. Check that the dev server and data API are running, then try again.
       </p>
-      <Button onClick={() => retry()} className="mt-4 h-11 rounded-xl px-5 text-lg">
+      <Button onClick={() => retry()} className="mt-4">
         Try again
       </Button>
     </div>

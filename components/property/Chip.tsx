@@ -1,14 +1,6 @@
-import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
+/** Property tags. A thin wrapper so every tag in the app is the shared Badge. */
 export function Chip({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "accent" }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-sm leading-5 font-medium",
-        tone === "accent" ? "bg-primary/12 text-primary" : "bg-muted text-muted-foreground",
-      )}
-    >
-      {children}
-    </span>
-  );
+  return <Badge variant={tone}>{children}</Badge>;
 }

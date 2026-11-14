@@ -2,6 +2,8 @@
 import type { Evidence } from "@/lib/contracts";
 import { travisAnalysisFixture } from "@/lib/contracts/examples/travis";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { VERDICTS } from "@/components/analysis/opportunity-format";
 
 const KINDS: { kind: Evidence["kind"]; label: string; dot: string }[] = [
   { kind: "verified_fact", label: "Verified fact", dot: "bg-primary" },
@@ -34,12 +36,8 @@ export function ExampleOpportunity() {
 
       <article className="rounded-2xl border bg-card p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="rounded-full border border-dashed border-muted-foreground/50 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-            Example output, not a real analysis
-          </span>
-          <span className="rounded-full bg-warning/12 px-2.5 py-0.5 text-sm font-semibold text-warning-foreground capitalize">
-            {opp.verdict.replace("_", " ")}
-          </span>
+          <Badge variant="outline">Example output, not a real analysis</Badge>
+          <Badge variant={VERDICTS[opp.verdict].variant}>{VERDICTS[opp.verdict].label}</Badge>
         </div>
         <h3 className="mt-4 text-xl leading-snug font-semibold">{clean(opp.title)}</h3>
         <p className="mt-1 text-base text-muted-foreground">2600 Travis St, Suite 100, Houston</p>

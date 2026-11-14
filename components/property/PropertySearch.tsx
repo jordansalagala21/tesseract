@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { inputClass } from "@/components/forms/fields";
 import type { Market, PropertySummary } from "@/lib/contracts";
 import { Button } from "@/components/ui/button";
 import { Chip } from "./Chip";
@@ -17,23 +19,20 @@ export function PropertySearchForm({ q, market }: { q?: string; market?: Market 
           defaultValue={q}
           placeholder="Address or building name"
           autoComplete="off"
-          className="h-11 w-full rounded-xl border bg-card pr-3 pl-11 text-lg outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+          className={cn(inputClass, "pl-11")}
         />
       </label>
       <div className="flex gap-3">
-        <label className="flex-1 sm:flex-none">
+        <label className="relative flex-1 sm:flex-none">
           <span className="sr-only">Market</span>
-          <select
-            name="market"
-            defaultValue={market ?? ""}
-            className="h-11 w-full rounded-xl border bg-card px-3 text-lg outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
+          <ChevronDown className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <select name="market" defaultValue={market ?? ""} className={cn(inputClass, "appearance-none pr-10 sm:w-44")}>
             <option value="">All markets</option>
             <option value="houston">Houston</option>
             <option value="los_angeles">Los Angeles</option>
           </select>
         </label>
-        <Button type="submit" className="h-11 rounded-xl px-5 text-lg">
+        <Button type="submit">
           Search
         </Button>
       </div>

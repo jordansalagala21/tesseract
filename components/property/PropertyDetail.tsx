@@ -68,7 +68,7 @@ export function SpaceList({ spaces, note }: { spaces: AvailableSpace[]; note: st
       </SectionHeading>
       <p className="mb-3 text-base text-muted-foreground">{note}</p>
       {spaces.length === 0 ? (
-        <p className="rounded-2xl border bg-card px-5 py-6 text-base text-muted-foreground">
+        <p className="rounded-2xl border bg-card p-5 text-base text-muted-foreground sm:p-6">
           No spaces are advertised in the current CoStar listings for this property.
         </p>
       ) : (
@@ -122,7 +122,7 @@ export function TenantList({ tenants, recorded, sample }: { tenants: Tenant[]; r
         Current tenants
       </SectionHeading>
       {tenants.length === 0 ? (
-        <p className="rounded-2xl border bg-card px-5 py-6 text-base text-muted-foreground">
+        <p className="rounded-2xl border bg-card p-5 text-base text-muted-foreground sm:p-6">
           {sample
             ? `CoStar records ${recorded} current ${recorded === 1 ? "tenant" : "tenants"} here. Names appear once the property API is connected.`
             : "No current tenants are recorded for this property."}

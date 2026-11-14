@@ -12,6 +12,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
+import { Segmented } from "@/components/ui/segmented";
 
 const BEFORE = {
   src: "/hero/shell.webp",
@@ -176,25 +177,15 @@ export function HeroBeforeAfter() {
       </div>
 
       <figcaption className="flex items-center justify-between gap-3 border-t bg-card px-3 py-2.5 sm:px-4">
-        <div role="group" aria-label="Choose a new use" className="flex gap-1 rounded-xl bg-muted p-1">
-          {USES.map((u, i) => (
-            <button
-              key={u.id}
-              type="button"
-              aria-pressed={i === index}
-              onClick={() => {
-                setIndex(i);
-                setPos(50);
-              }}
-              className={cn(
-                "h-8 rounded-lg px-3 text-base font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                i === index ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {u.label}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          label="Choose a new use"
+          options={USES.map((u) => ({ value: u.id, label: u.label }))}
+          value={use.id}
+          onChange={(id) => {
+            setIndex(USES.findIndex((u) => u.id === id));
+            setPos(50);
+          }}
+        />
         <p className="text-sm text-muted-foreground">{hasAfter ? "Drag to compare" : "Real space, real scan"}</p>
       </figcaption>
     </figure>

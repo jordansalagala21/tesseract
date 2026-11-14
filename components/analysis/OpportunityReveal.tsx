@@ -2,6 +2,7 @@ import { useId } from "react";
 import { AlertTriangle } from "lucide-react";
 import type { Evidence, Opportunity, UserPersona } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { EvidenceChip } from "./EvidenceChip";
 import { SCORE_PARTS, STRATEGIES, VERDICTS, groupOpportunities, scoreText } from "./opportunity-format";
 
@@ -49,7 +50,7 @@ function OpportunityCard({ opp, titleId, ...chipProps }: ChipProps & { opp: Oppo
               <h3 id={titleId} className="text-xl leading-snug font-semibold">
                 {opp.title}
               </h3>
-              <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-sm font-semibold", verdict.tone)}>{verdict.label}</span>
+              <Badge variant={verdict.variant} className="shrink-0">{verdict.label}</Badge>
             </div>
             <p className="mt-0.5 text-base text-muted-foreground">{STRATEGIES[opp.strategy]}</p>
             <p className="mt-2 text-base leading-relaxed">{opp.summary}</p>
@@ -173,7 +174,7 @@ export function OpportunityReveal({
       </div>
 
       {opportunities.length === 0 ? (
-        <p className="rounded-2xl border bg-card px-5 py-6 text-base text-muted-foreground">
+        <p className="rounded-2xl border bg-card p-5 text-base text-muted-foreground sm:p-6">
           The agent didn’t find a use the evidence supports. Check the missing information in the Evidence Trail.
         </p>
       ) : (

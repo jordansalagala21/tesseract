@@ -34,7 +34,7 @@ export default function Home() {
                 </p>
               </div>
               <div className="flex flex-col gap-3">
-                <Link href="/properties" className={cn(buttonVariants(), "h-11 w-fit px-5 text-base")}>
+                <Link href="/properties" className={cn(buttonVariants(), "w-fit")}>
                   Find a property
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </Link>

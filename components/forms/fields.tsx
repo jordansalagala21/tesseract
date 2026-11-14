@@ -68,7 +68,7 @@ export function Segmented({
         {options.map((o) => (
           <label
             key={o.value}
-            className="relative flex h-9 flex-1 cursor-pointer items-center justify-center rounded-lg px-2 text-center text-base font-medium text-muted-foreground transition-colors has-checked:bg-card has-checked:text-foreground has-checked:shadow-sm has-focus-visible:ring-2 has-focus-visible:ring-ring"
+            className="relative flex h-11 flex-1 cursor-pointer items-center justify-center rounded-lg px-2 text-center text-base font-medium text-muted-foreground transition-colors has-checked:bg-card has-checked:text-foreground has-checked:shadow-sm has-focus-visible:ring-2 has-focus-visible:ring-ring"
           >
             <input type="radio" name={name} value={o.value} defaultChecked={o.value === defaultValue} className="sr-only" />
             {o.label}
@@ -143,7 +143,7 @@ export function SubmitStatus({ state }: { state: import("./use-analyze-form").Su
 
 export function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-5 rounded-2xl border bg-card/40 p-5 sm:p-6">
+    <section className="flex flex-col gap-5 rounded-2xl border bg-card p-5 sm:p-6">
       <h2 className="text-lg font-semibold text-muted-foreground">{title}</h2>
       {children}
     </section>

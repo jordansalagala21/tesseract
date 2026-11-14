@@ -88,7 +88,7 @@ export function EntrepreneurForm() {
 
       <SubmitStatus state={state} />
       <div className="flex justify-end">
-        <Button type="submit" disabled={state.kind === "sending"} className="h-11 rounded-xl px-6 text-lg">
+        <Button type="submit" disabled={state.kind === "sending"}>
           {state.kind === "sending" && <Loader2 className="size-4 motion-safe:animate-spin" aria-hidden="true" />}
           Find spaces that fit
         </Button>

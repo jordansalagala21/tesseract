@@ -55,7 +55,7 @@ export function AgentTimeline({
       </div>
 
       {calls.length === 0 ? (
-        <p className="rounded-2xl border bg-card px-5 py-6 text-base text-muted-foreground">
+        <p className="rounded-2xl border bg-card p-5 text-base text-muted-foreground sm:p-6">
           {live ? "The agent is planning its first step." : "The agent didn’t run any tools for this analysis."}
         </p>
       ) : (

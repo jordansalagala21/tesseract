@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { Segmented } from "@/components/ui/segmented";
 import { formatSf } from "@/components/property/format";
 import type { TourOption } from "./tours";
 
@@ -29,27 +30,17 @@ export function MatterportViewer({ tours, initialModelId }: { tours: TourOption[
           3D tour
         </h2>
         {tours.length > 1 && (
-          <div role="group" aria-label="Choose a scan" className="flex max-w-full gap-1 overflow-x-auto rounded-xl bg-muted p-1">
-            {tours.map((t) => (
-              <button
-                key={t.modelId}
-                type="button"
-                aria-pressed={t.modelId === activeId}
-                onClick={() => setActiveId(t.modelId)}
-                className={cn(
-                  "h-8 shrink-0 rounded-lg px-3 text-base font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  t.modelId === activeId ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {t.title}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            label="Choose a scan"
+            options={tours.map((t) => ({ value: t.modelId, label: t.title }))}
+            value={activeId ?? ""}
+            onChange={setActiveId}
+          />
         )}
       </div>
 
       {!tour ? (
-        <p className="rounded-2xl border bg-card px-5 py-6 text-base text-muted-foreground">
+        <p className="rounded-2xl border bg-card p-5 text-base text-muted-foreground sm:p-6">
           No Matterport scan is linked to this property in the CoStar data, so there’s no 3D tour.
         </p>
       ) : (

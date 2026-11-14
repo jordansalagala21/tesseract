@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Expand, ImageOff, X } from "lucide-react";
 import type { AerialImagery } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
+import { Segmented } from "@/components/ui/segmented";
 import { aerialLabel, formatCaptureRange, formatGsd } from "./aerial-format";
 
 export function AerialViewer({ images }: { images: AerialImagery[] }) {
@@ -21,27 +22,17 @@ export function AerialViewer({ images }: { images: AerialImagery[] }) {
           Aerial view
         </h2>
         {images.length > 1 && (
-          <div role="group" aria-label="Choose a view" className="flex max-w-full gap-1 overflow-x-auto rounded-xl bg-muted p-1">
-            {images.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                aria-pressed={a.id === activeId}
-                onClick={() => setActiveId(a.id)}
-                className={cn(
-                  "h-8 shrink-0 rounded-lg px-3 text-base font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  a.id === activeId ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {aerialLabel(a)}
-              </button>
-            ))}
-          </div>
+          <Segmented
+            label="Choose a view"
+            options={images.map((a) => ({ value: a.id, label: aerialLabel(a) }))}
+            value={activeId ?? ""}
+            onChange={setActiveId}
+          />
         )}
       </div>
 
       {!image ? (
-        <p className="rounded-2xl border bg-card px-5 py-6 text-base text-muted-foreground">
+        <p className="rounded-2xl border bg-card p-5 text-base text-muted-foreground sm:p-6">
           No Vexcel aerial image is available for this property yet.
         </p>
       ) : (

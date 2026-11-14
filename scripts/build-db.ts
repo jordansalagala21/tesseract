@@ -195,6 +195,144 @@ export async function buildDb(options: BuildDbOptions): Promise<BuildDbResult> {
     `);
     tables.spaces = await countRows(connection, "spaces");
 
+    // ----------------------------------------------------------- tenants_current
+    // A tenancy is current when `toDate` IS NULL — which covers the 11,179 records that omit
+    // the key entirely. It is never literally null when present, so a JS `=== null` filter
+    // would classify every current tenancy as expired.
+    log("building tenants_current…");
+    await connection.run(`
+      CREATE OR REPLACE TABLE tenants_current AS
+      WITH occupancy AS (
+        SELECT * FROM ${jsonSource(options.kitDir, "location-occupancy")} WHERE toDate IS NULL
+      ),
+      companies AS (
+        SELECT id, name, suite, numEmployees FROM ${jsonSource(options.kitDir, "company-detail")}
+      )
+      SELECT
+        o.id::INT                                             AS occupancy_id,
+        o.propertyId::INT                                     AS property_id,
+        o.tenantLocationId::INT                               AS tenant_location_id,
+        -- LEFT JOIN: only 9,344 of the 11,179 current tenancies name a tenant location.
+        c.name                                                AS tenant_name,
+        c.suite                                               AS tenant_suite,
+        ${sqlEnum(enums, "IndustryType", "o.industryType")}   AS industry_type,
+        ${sqlEnum(enums, "LeaseType", "o.leaseType")}         AS lease_type,
+        try_cast(o.fromDate AS DATE)                          AS from_date,
+        try_cast(o.moveInDate AS DATE)                        AS move_in_date,
+        c.numEmployees::INT                                   AS num_employees,
+        o.toDate                                              AS to_date,
+        'location-occupancy'                                  AS source_dataset
+      FROM occupancy o
+      LEFT JOIN companies c ON c.id = o.tenantLocationId
+    `);
+    tables.tenants_current = await countRows(connection, "tenants_current");
+
+    // -------------------------------------------------------------------- comps
+    // One row per (comp, property entity). `salePriceStatus` always travels with the price:
+    // the raw id is kept because 125 priced comps carry Unknown (0), which has no label.
+    log("building comps…");
+    await connection.run(`
+      CREATE OR REPLACE TABLE comps AS
+      WITH flat AS (
+        SELECT
+          id, soldForPrice, soldDate, salePriceStatus, saleType, tenure, isLandValueSale,
+          unnest(entities) AS e
+        FROM ${jsonSource(options.kitDir, "commercial-sale-comp")}
+        WHERE entities IS NOT NULL
+      )
+      SELECT
+        id::INT                                                   AS comp_id,
+        e.propertyId::INT                                         AS property_id,
+        soldForPrice                                              AS sold_for_price,
+        try_cast(soldDate AS DATE)                                AS sold_date,
+        salePriceStatus::INT                                      AS sale_price_status_id,
+        ${sqlEnum(enums, "SalePriceStatus", "salePriceStatus")}   AS sale_price_status,
+        ${sqlEnum(enums, "SaleType", "saleType")}                 AS sale_type,
+        ${sqlEnum(enums, "Tenure", "tenure")}                     AS tenure,
+        isLandValueSale                                           AS is_land_value_sale,
+        'commercial-sale-comp'                                    AS source_dataset
+      FROM flat
+      WHERE e.propertyId IS NOT NULL
+    `);
+    tables.comps = await countRows(connection, "comps");
+
+    // ------------------------------------------------------------- sale_listings
+    // capitalizationRate and netOperatingIncome are the SELLER's marketed figures — often
+    // pro forma, and present on only 32 / 31 of the 107 active sale listings.
+    log("building sale_listings…");
+    await connection.run(`
+      CREATE OR REPLACE TABLE sale_listings AS
+      SELECT
+        l.id::INT                                                 AS listing_id,
+        l.propertyId::INT                                         AS property_id,
+        l.forSaleSummary.askingPriceLow                           AS asking_price_low,
+        l.forSaleSummary.askingPriceHigh                          AS asking_price_high,
+        l.forSaleSummary.capitalizationRate                       AS capitalization_rate,
+        l.forSaleSummary.netOperatingIncome                       AS net_operating_income,
+        l.forSaleSummary.totalAvailableSquareFeet                 AS total_available_sf,
+        ${sqlEnum(enums, "SaleStatus", "l.forSaleSummary.saleStatus")}  AS sale_status,
+        ${sqlEnum(enums, "SaleType", "l.forSaleSummary.saleType")}      AS sale_type,
+        'commercial-listing-summary'                              AS source_dataset
+      FROM ${jsonSource(options.kitDir, "commercial-listing-summary")} l
+      WHERE l.listingStatus = 1 AND l.forSaleSummary IS NOT NULL
+    `);
+    tables.sale_listings = await countRows(connection, "sale_listings");
+
+    // -------------------------------------------------------- matterport_models
+    // Two signals, each recorded with its own link_method so the UI can caveat the heuristic:
+    //   caption_suite_match     — property attachment caption names the suite (110 spaces)
+    //   space_floorplan_videokey — the space's own floorPlan carries the model id (20 spaces)
+    // Where both exist they agree, which is what justifies trusting the caption match.
+    log("building matterport_models…");
+    await connection.run(`
+      CREATE OR REPLACE TABLE matterport_models AS
+      WITH attachments AS (
+        SELECT p.id::INT AS property_id, unnest(p.attachments) AS a
+        FROM ${jsonSource(options.kitDir, "commercial-property")} p
+        WHERE p.attachments IS NOT NULL
+      ),
+      caption_links AS (
+        SELECT
+          property_id,
+          a.videoKey AS model_id,
+          a.caption  AS caption,
+          ${sqlNormalizeSuite("regexp_extract(a.caption, '(?i)\\bsuite\\s+([A-Za-z0-9-]+)', 1)")} AS matched_suite
+        FROM attachments
+        WHERE a.videoKey IS NOT NULL
+          AND a.videoExternalReferenceType IN (${MATTERPORT_REFERENCE_TYPES.join(", ")})
+      ),
+      from_captions AS (
+        -- One row per (property, model, suite). The kit both repeats whole attachments
+        -- (1018657 lists each of its two models twice) and attaches one model under several
+        -- captions, either of which would otherwise surface the same 3D tour twice for a
+        -- suite. min(caption) picks one deterministically.
+        SELECT
+          property_id,
+          NULL::INT          AS space_id,
+          model_id,
+          min(caption)       AS caption,
+          matched_suite,
+          'caption_suite_match' AS link_method
+        FROM caption_links
+        GROUP BY property_id, model_id, matched_suite
+      ),
+      from_spaces AS (
+        SELECT
+          property_id,
+          id                   AS space_id,
+          floor_plan_video_key AS model_id,
+          floor_plan_caption   AS caption,
+          suite_norm           AS matched_suite,
+          'space_floorplan_videokey' AS link_method
+        FROM spaces
+        WHERE floor_plan_video_key IS NOT NULL
+      )
+      SELECT *, 'commercial-property' AS source_dataset FROM from_captions
+      UNION ALL
+      SELECT *, 'commercial-listing-summary' AS source_dataset FROM from_spaces
+    `);
+    tables.matterport_models = await countRows(connection, "matterport_models");
+
     log(`done in ${Date.now() - started} ms`);
     return { tables, elapsedMs: Date.now() - started };
   } finally {

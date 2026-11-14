@@ -1,12 +1,32 @@
-# lib/agent — Agent orchestration (OWNER: Developer 1)
+# lib/agent — Claude orchestrator (OWNER: Developer 1)
 
-| Planned module | Issue | Responsibility |
-|---|---|---|
-| `orchestrator.ts` | AI-01 | Claude tool-use loop (max steps), emits `AgentToolCall` events, builds `AnalysisResponse` |
-| `tools.ts` | AI-01, AI-02 | Tool definitions (names = `AgentToolName`) wrapping `lib/data`, `lib/market`, `lib/finance` |
-| `vision.ts` | AI-02 | Interior (Matterport photos/floor plan) and exterior (Vexcel) vision → `ai_observation` evidence |
-| `evidence.ts` | AI-03 | Evidence registry; guarantees every claim references an existing evidence id |
-| `personas.ts` | AI-07 | Persona-specific goals/prompts for owner / investor / entrepreneur |
-| `store.ts` | AI-01 | In-memory analysis store for `GET /api/analysis/[id]` (hackathon scope) |
+| Module | Responsibility |
+|---|---|
+| `orchestrator.ts` | `runAnalysis()`: manual Claude tool-use loop with a step limit; records every `AgentToolCall` (reason, status, timing, evidence); failed tools are recorded and the run continues; builds the `AnalysisResponse` |
+| `tools.ts` | The 10 `AgentToolName` tools (Zod input → JSON Schema), `submit_report`, and handlers. Data access is injected as `DataDeps` |
+| `evidence.ts` | `EvidenceRegistry`: assigns ids, validates every item, builds the four-bucket index, drops unknown ids |
+| `store.ts` | In-memory analysis store (no persistence by design) |
+| `run.ts` | Server entry: real Anthropic client + store; never throws |
 
-The agent never reads sponsor data directly — only through `lib/data` functions.
+**Who decides what:**
+- Claude chooses what to investigate and writes the explanations.
+- `lib/market` sets scores and verdicts.
+- `lib/finance` computes the money figures.
+- Opportunities are ranked by score, never by the model's order.
+
+**Data tools** fail honestly (`UNAVAILABLE_DEPS`) until their modules land:
+
+| Tools | Unblocked by |
+|---|---|
+| property search, space search | DATA-02 |
+| property profile | DATA-03 |
+| Matterport metadata | DATA-04 |
+| Vexcel imagery | DATA-05 |
+| nearby context | DATA-07 |
+| interior and exterior vision | AI-02 |
+
+INT-02 wires the real implementations into `executeAnalysis(id, request, deps)`.
+
+**Model:** `ANTHROPIC_MODEL_ORCHESTRATOR` (default `claude-opus-5-5`), effort `medium`, server-side refusal fallback (`fallbacks: "default"`).
+
+Routes: `POST /api/analyze` → 202 `{ analysisId, pollUrl }`, then poll `GET /api/analysis/[id]`.

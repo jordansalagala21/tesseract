@@ -31,3 +31,18 @@ export function serverEnv(): ServerEnv {
   }
   return cached;
 }
+
+/**
+ * Just what the agent needs. Narrower than serverEnv() so a missing Matterport or Vexcel key
+ * cannot stop an analysis; those tools fail on their own and the analysis records the gap.
+ */
+const AgentEnv = ServerEnv.pick({ ANTHROPIC_API_KEY: true, ANTHROPIC_MODEL_ORCHESTRATOR: true, ANTHROPIC_MODEL_FAST: true });
+export type AgentEnv = z.infer<typeof AgentEnv>;
+
+export function agentEnv(): AgentEnv {
+  const parsed = AgentEnv.safeParse(process.env);
+  if (!parsed.success) {
+    throw new Error("ANTHROPIC_API_KEY is not set. Add it to .env.local (see .env.example).");
+  }
+  return parsed.data;
+}

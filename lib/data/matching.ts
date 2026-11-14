@@ -91,3 +91,51 @@ export function linkSuiteToModel(
   }
   return null;
 }
+
+/* --------------------------------------------------- DATA-06: coordinate checks */
+
+export interface LatLonPair {
+  lat: number;
+  lon: number;
+}
+
+/** Mean Earth radius in metres. */
+const EARTH_RADIUS_M = 6_371_000;
+
+/**
+ * Great-circle distance in metres between two WGS-84 points.
+ *
+ * Used to sanity-check a CoStar↔Matterport link: a scan whose own geocoordinates sit far from
+ * the CoStar address is evidence the caption match is wrong, even when the suite text agrees.
+ * Matterport omits geocoordinates on some models, so callers must handle a null distance.
+ */
+export function distanceMeters(a: LatLonPair, b: LatLonPair): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lon - a.lon);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
+  return EARTH_RADIUS_M * 2 * Math.asin(Math.sqrt(h));
+}
+
+/** How far apart a CoStar address and a Matterport scan may sit before the link looks wrong. */
+export const COORDINATE_TOLERANCE_M = 150;
+
+export interface CoordinateCheck {
+  distanceMeters: number | null;
+  withinTolerance: boolean | null;
+}
+
+/**
+ * Compare a CoStar address against a Matterport scan's own coordinates.
+ * A null `costar` or `matterport` yields nulls — "not reported", never a passing check.
+ */
+export function checkCoordinates(
+  costar: LatLonPair | null | undefined,
+  matterport: LatLonPair | null | undefined,
+): CoordinateCheck {
+  if (!costar || !matterport) return { distanceMeters: null, withinTolerance: null };
+  const distance = distanceMeters(costar, matterport);
+  return { distanceMeters: distance, withinTolerance: distance <= COORDINATE_TOLERANCE_M };
+}

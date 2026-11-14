@@ -3,8 +3,7 @@
 import type { Metadata } from "next";
 import type { AgentToolCall, Opportunity } from "@/lib/contracts";
 import { travisAnalysisFixture } from "@/lib/contracts/examples/travis";
-import { AgentTimeline } from "@/components/analysis/AgentTimeline";
-import { OpportunityReveal } from "@/components/analysis/OpportunityReveal";
+import { AnalysisResults } from "@/components/analysis/AnalysisResults";
 import { SiteHeader } from "@/components/site/SiteHeader";
 
 export const metadata: Metadata = { title: "Analysis preview | Tesseract", robots: { index: false } };
@@ -136,11 +135,10 @@ export default function AnalysisPreviewPage() {
           2600 Travis St development fixture. Steps 2 to 7 and the “Example” acquisition card are example states for
           checking the design. None of this is live agent output.
         </p>
-        <AgentTimeline toolCalls={[...a.toolCalls, ...uiStateSteps]} evidence={a.evidence} status="running" />
-        <OpportunityReveal opportunities={a.opportunities} evidence={a.evidence} persona="owner" />
+        <AnalysisResults analysis={{ ...a, status: "running", toolCalls: [...a.toolCalls, ...uiStateSteps] }} />
         <div className="flex flex-col gap-3">
           <p className="text-[15px] font-medium text-muted-foreground">Investor view: buying and leasing stay separate</p>
-          <OpportunityReveal opportunities={[...a.opportunities, exampleAcquisition]} evidence={a.evidence} persona="investor" />
+          <AnalysisResults analysis={{ ...a, persona: "investor", opportunities: [...a.opportunities, exampleAcquisition] }} showTimeline={false} />
         </div>
       </main>
     </div>

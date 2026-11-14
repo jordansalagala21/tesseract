@@ -1,6 +1,7 @@
 import { useId } from "react";
 import type { Evidence, MarketAnalysis } from "@/lib/contracts";
 import { humanize } from "@/components/property/format";
+import { Info } from "lucide-react";
 import { Notice } from "@/components/ui/notice";
 import { EvidenceChip } from "./EvidenceChip";
 import { barRows, formatRadius, money, rentRange } from "./market-format";
@@ -79,13 +80,20 @@ export function MarketDashboard({
       </div>
 
       {/* Limitations first and always visible, so the numbers below are read with them in mind. */}
-      <Notice title="What this can’t tell you">
-          <ul className="mt-1 flex list-disc flex-col gap-1 pl-4">
+      <div role="note" className="flex flex-col gap-x-5 gap-y-1 rounded-xl border bg-muted/50 px-4 py-2.5 text-sm lg:flex-row lg:items-baseline">
+        <p className="flex shrink-0 items-center gap-2 font-semibold">
+          <Info className="size-4 text-muted-foreground" aria-hidden="true" />
+          What this can’t tell you
+        </p>
+        <ul className="flex flex-col gap-x-5 gap-y-0.5 text-muted-foreground sm:flex-row sm:flex-wrap">
           {m.limitations.map((l) => (
-            <li key={l}>{l}</li>
+            <li key={l} className="flex items-baseline gap-2">
+              <span className="size-1 shrink-0 -translate-y-0.5 rounded-full bg-muted-foreground" aria-hidden="true" />
+              {l}
+            </li>
           ))}
         </ul>
-        </Notice>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card title="Asking rent nearby" n={m.comparableSpaces.count} unit="advertised spaces">

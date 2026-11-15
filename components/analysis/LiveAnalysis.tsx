@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { EmptyState, Skeleton } from "@/components/ui/states";
 import { ResultsOverview } from "./ResultsOverview";
-import { StepStrip } from "./StepStrip";
+import { AgentFlow } from "@/components/intake/AgentFlow";
 import { startAnalysis } from "./start-analysis";
 
 const POLL_MS = 1500;
@@ -163,8 +163,8 @@ export function LiveAnalysis({ id }: { id: string }) {
         )}
       </div>
 
-      {/* The five-step progress strip is for the waiting minute; finished runs go straight to the result. */}
-      {!isDone(a) && <StepStrip toolCalls={a.toolCalls} status={a.status} />}
+      {/* The agent loading screen is for the waiting minute; finished runs go straight to the result. */}
+      {!isDone(a) && <AgentFlow persona={input.persona} toolCalls={a.toolCalls} />}
 
       <ResultsOverview analysis={a} />
 

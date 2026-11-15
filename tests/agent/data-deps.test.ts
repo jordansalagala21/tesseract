@@ -5,6 +5,7 @@ import { travisOrtho, travisProperty, travisSpaces, travisSuite100Model } from "
 import { groundFloorOf, liveDataDeps, profileOutput, sameCategoryTenants, type DataModules } from "@/lib/agent/data-deps";
 import { runAnalysis, type CreateMessage } from "@/lib/agent/orchestrator";
 import { ToolUnavailableError } from "@/lib/agent/tools";
+import type { SaleListing } from "@/lib/data/sale-listings";
 import { TRAVIS_1000 } from "../market/nearby-fixtures";
 
 const NOW = "2026-11-14T12:00:00.000Z";
@@ -21,6 +22,8 @@ function modules(over: Partial<DataModules> = {}): DataModules {
     getProperty: async (id) => (id === travisProperty.id ? travisProperty : null),
     getSpaces: async () => travisSpaces,
     getCurrentTenants: async () => TENANTS,
+    searchSaleListings: async () => ({ items: [], total: 0 }),
+    getSaleListings: async () => [],
     getNearbyContext: async () => TRAVIS_1000,
     getMatterportModel: async (_id, link) => ({ ...travisSuite100Model, costarCaption: link.caption ?? null, matchedSuite: link.matchedSuite ?? null }),
     getModelImages: async () => [],
@@ -174,5 +177,51 @@ describe("owner analysis on the live deps (scripted model)", () => {
     // F45 already in the building is a soft blocker, shown to the owner.
     expect(gym.scores.market.rationale).toMatch(/F45/);
     expect(r.marketAnalysis?.propertyId).toBe(pid);
+  });
+});
+
+/* --------------------------------------------------------- acquisition */
+
+/** A listing shaped like the kit's (Houston office, priced, with a stated cap rate and NOI). */
+const LISTING: SaleListing = {
+  listingId: 4242,
+  propertyId: travisProperty.id,
+  name: null,
+  street: "2600 Travis St",
+  city: "Houston",
+  market: "houston",
+  propertyType: "GeneralRetail",
+  askingPriceLowUsd: 9_500_000,
+  askingPriceHighUsd: 9_500_000,
+  askingCapRatePct: 7.25,
+  netOperatingIncomeUsd: 688_750,
+  availableSf: 36_932,
+  saleStatus: "Active",
+  saleType: "Investment",
+  source: { system: "costar", dataset: "commercial-listing-summary", recordId: "4242", field: "forSaleSummary" },
+};
+
+describe("acquisition data", () => {
+  it("adds the listing's price, cap rate and NOI to the property, as asking figures", () => {
+    const out = profileOutput(travisProperty, travisSpaces, [], undefined, [LISTING]);
+    const text = out.evidence.map((e) => e.statement).join(" | ");
+    expect(text).toMatch(/asking price of \$9,500,000 \(active, investment\) for 36,932 SF \(an asking price, not a valuation\)/);
+    expect(text).toMatch(/asking cap rate of 7.25% \(the seller's figure, not an underwritten return\)/);
+    expect(out.facts![`p${travisProperty.id}`].askingCapRatePct?.value).toBe(7.25);
+    expect(out.evidence.every(valid)).toBe(true);
+  });
+
+  it("records an undisclosed price as missing, never as a value", () => {
+    const out = profileOutput(travisProperty, travisSpaces, [], undefined, [{ ...LISTING, askingPriceLowUsd: null, askingPriceHighUsd: null }]);
+    expect(out.evidence.find((e) => e.id === `ev_p${travisProperty.id}_sale_price_missing`)?.kind).toBe("missing");
+    expect(out.evidence.some((e) => e.id === `ev_p${travisProperty.id}_sale_price`)).toBe(false);
+  });
+
+  it("search_properties with forSale lists sale listings with their asking figures", async () => {
+    const searchSaleListings = vi.fn(async () => ({ items: [LISTING], total: 1 }));
+    const out = await deps({ searchSaleListings }).searchProperties({ forSale: true, market: "houston", maxAskingPriceUsd: 10_000_000 });
+    expect(searchSaleListings).toHaveBeenCalledWith({ market: "houston", maxAskingPriceUsd: 10_000_000, limit: 10 });
+    expect(out.evidence[0].statement).toMatch(/listed for sale at \$9,500,000, asking cap rate 7.25%/);
+    expect((out.data as { subject: string }[])[0].subject).toBe(`p${travisProperty.id}`);
   });
 });

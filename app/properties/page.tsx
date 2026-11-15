@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Market } from "@/lib/contracts";
 import { PropertyResults, PropertySearchForm } from "@/components/property/PropertySearch";
-import { SampleDataBanner } from "@/components/property/SampleDataBanner";
+import { DataUnavailable } from "@/components/property/DataUnavailable";
 import { PageHeader } from "@/components/site/PageShell";
 import { searchProperties } from "./property-data";
 
@@ -12,7 +12,8 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
   const q = typeof sp.q === "string" && sp.q.trim() ? sp.q.trim() : undefined;
   const parsedMarket = Market.safeParse(sp.market);
   const market = parsedMarket.success ? parsedMarket.data : undefined;
-  const { data, sample } = await searchProperties({ q, market });
+  const result = await searchProperties({ q, market });
+  const retry = new URLSearchParams({ ...(q && { q }), ...(market && { market }) }).toString();
 
   return (
     <>
@@ -21,8 +22,11 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/prope
         description="Search commercial buildings in Houston and Los Angeles, then open one to see its advertised spaces."
       />
       <PropertySearchForm q={q} market={market} />
-      {sample && <SampleDataBanner />}
-      <PropertyResults items={data.items} total={data.total} q={q} />
+      {result.ok ? (
+        <PropertyResults items={result.data.items} total={result.data.total} q={q} />
+      ) : (
+        <DataUnavailable reason={result.reason} retryHref={`/properties${retry ? `?${retry}` : ""}`} />
+      )}
     </>
   );
 }

@@ -117,16 +117,17 @@ export function SpaceList({ spaces, note }: { spaces: AvailableSpace[]; note: st
   );
 }
 
-export function TenantList({ tenants, recorded, sample }: { tenants: Tenant[]; recorded: number; sample: boolean }) {
+export function TenantList({ tenants, recorded }: { tenants: Tenant[]; recorded: number }) {
   return (
     <section aria-labelledby="tenants-heading">
       <SectionHeading id="tenants-heading" detail={`${recorded} recorded`}>
         Current tenants
       </SectionHeading>
       {tenants.length === 0 ? (
-        <EmptyState title={sample ? "Tenant names not shown yet" : "No current tenants"} icon={Users}>
-          {sample
-            ? `CoStar records ${recorded} current ${recorded === 1 ? "tenant" : "tenants"} here. Names appear once the property API is connected.`
+        // CoStar can count tenants without listing them; don't say "no tenants" next to "3 recorded".
+        <EmptyState title={recorded > 0 ? "Tenant names not listed" : "No current tenants"} icon={Users}>
+          {recorded > 0
+            ? `CoStar counts ${recorded} current ${recorded === 1 ? "tenant" : "tenants"} here but doesn’t list their names.`
             : "CoStar records no current tenants for this property."}
         </EmptyState>
       ) : (

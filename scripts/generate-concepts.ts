@@ -6,12 +6,16 @@
  *   npm run concepts:generate -- --subject p1018657-s21963212   another space (Suite 104)
  *   npm run concepts:generate -- --uses restaurant_bar,cafe     only some uses
  *   npm run concepts:generate -- --photo 2 --quality high --force
+ *   npm run concepts:generate -- --uses empty                   only the empty-room view
  *
  * For each use it sends ONE photo from the space's own Matterport scan to OpenAI's image edit
  * endpoint with a prompt that keeps the room (camera angle, windows, ceiling) and changes only
  * the fit-out, then saves public/concepts/<subject>/<use>.webp and registers it in
  * public/concepts/manifest.json, which the results page reads. The page labels every image
  * "AI concept — illustrative only, not an architectural plan".
+ *
+ * "empty" is the same photo with the loose furniture taken out (empty.webp). The page shows it,
+ * labelled "AI view, furniture removed", first when scan photos were hidden for showing furniture.
  *
  * public/concepts/ is gitignored: the images are derived from sponsor imagery.
  * Cost: one image per use, about 5–10¢ each at medium quality.
@@ -31,7 +35,8 @@ const opt = (name: string) => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 const SUBJECT = opt("subject") ?? "p1018657-s21053094";
-const USES_WANTED = (opt("uses")?.split(",") ?? USE_CATEGORIES) as UseCategory[];
+type Target = UseCategory | "empty";
+const USES_WANTED = (opt("uses")?.split(",") ?? [...USE_CATEGORIES, "empty"]) as Target[];
 const PHOTO = Number(opt("photo") ?? 0);
 const QUALITY = opt("quality") ?? "medium";
 const FORCE = args.includes("--force");
@@ -47,6 +52,9 @@ const LOOKS: Record<UseCategory, string> = {
 };
 const KEEP =
   "Keep this exact room: the same camera angle, the same windows, ceiling, columns, walls and proportions. Change only the furniture, finishes and fit-out. Photorealistic interior photograph, natural daylight, no people, no text, no logos.";
+
+const EMPTY =
+  "Remove every piece of loose furniture, decor, plant, stock, belonging and person from this room so it is empty and clean, ready for a new tenant. Keep this exact room: the same camera angle, walls, floor, ceiling, lighting, windows, columns, doors and built-in counters and fixtures. Do not add anything. Photorealistic interior photograph, no text, no logos.";
 
 const OUT_DIR = path.join(process.cwd(), "public", "concepts");
 const MANIFEST = path.join(OUT_DIR, "manifest.json");
@@ -65,11 +73,11 @@ async function sourcePhoto(): Promise<{ bytes: Buffer; modelId: string }> {
   return { bytes: Buffer.from(await res.arrayBuffer()), modelId };
 }
 
-async function edit(photo: Buffer, use: UseCategory, key: string, model: string): Promise<Buffer> {
+async function edit(photo: Buffer, use: Target, key: string, model: string): Promise<Buffer> {
   const form = new FormData();
   form.append("model", model);
   form.append("image", new Blob([new Uint8Array(photo)], { type: "image/jpeg" }), "space.jpg");
-  form.append("prompt", `Redesign this space as ${LOOKS[use]}. ${KEEP}`);
+  form.append("prompt", use === "empty" ? EMPTY : `Redesign this space as ${LOOKS[use]}. ${KEEP}`);
   form.append("size", "1536x1024");
   form.append("quality", QUALITY);
   const res = await fetch("https://api.openai.com/v1/images/edits", { method: "POST", headers: { Authorization: `Bearer ${key}` }, body: form });
@@ -81,8 +89,8 @@ async function edit(photo: Buffer, use: UseCategory, key: string, model: string)
 
 async function main() {
   const { OPENAI_API_KEY, OPENAI_IMAGE_MODEL } = imageGenEnv();
-  const unknown = USES_WANTED.filter((u) => !USES[u]);
-  if (unknown.length) throw new Error(`Unknown use(s): ${unknown.join(", ")}. Use: ${USE_CATEGORIES.join(", ")}.`);
+  const unknown = USES_WANTED.filter((u) => u !== "empty" && !USES[u]);
+  if (unknown.length) throw new Error(`Unknown use(s): ${unknown.join(", ")}. Use: ${USE_CATEGORIES.join(", ")}, empty.`);
 
   const { bytes, modelId } = await sourcePhoto();
   const photo = await sharp(bytes).rotate().resize({ width: 1536, withoutEnlargement: true }).jpeg({ quality: 90 }).toBuffer();

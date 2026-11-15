@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Evidence, Opportunity } from "@/lib/contracts";
-import { heroImageFor, imagesFor, observationsWithImages, reasonsFor, scanPhotoUrl } from "@/components/analysis/result-images";
+import { furnishedPhotos, heroImageFor, imagesFor, observationsWithImages, reasonsFor, scanPhotoUrl } from "@/components/analysis/result-images";
 
 const NOW = "2026-11-14T00:00:00.000Z";
 const obs = (id: string, photo: number, statement = `seen ${id}`): Evidence => ({
@@ -20,6 +20,23 @@ describe("result images", () => {
   it("uses aerial media only when it points at our proxy", () => {
     const aerial: Evidence = { ...fact("a", "aerial"), media: [{ type: "aerial", ref: "/api/imagery/vexcel/ortho?propertyId=1" }, { type: "aerial", ref: "https://evil.example/x.jpg" }] };
     expect(imagesFor(aerial).map((i) => i.src)).toEqual(["/api/imagery/vexcel/ortho?propertyId=1"]);
+  });
+
+  it("never shows a furnished photo: gallery, idea cards and reasons skip it", () => {
+    const furnished: Evidence = { ...obs("ev_int1_furnished", 0, "One scan photo shows furniture"), sources: [obs("x", 0).sources[0], obs("y", 2).sources[0]] };
+    const both: Evidence = { ...obs("ev_int1_1", 0), sources: [obs("x", 0).sources[0], obs("z", 1).sources[0]] };
+    const evidence = [furnished, both, obs("ev_int1_2", 2), obs("ev_int1_3", 3)];
+    const hide = furnishedPhotos(evidence);
+    expect([...hide]).toEqual(["/api/imagery/matterport/NxYn1owequw/photos-0", "/api/imagery/matterport/NxYn1owequw/photos-2"]);
+
+    // ev_int1_1 shows through its second, bare photo; ev_int1_2 only has a furnished one; the note itself is not a picture.
+    const rows = observationsWithImages(evidence);
+    expect(rows.map((r) => [r.e.id, r.image.src.slice(-8)])).toEqual([["ev_int1_1", "photos-1"], ["ev_int1_3", "photos-3"]]);
+
+    const byId = new Map(evidence.map((e) => [e.id, e]));
+    const pick = heroImageFor(opp(["ev_int1_furnished", "ev_int1_2"]), byId, rows.map((r) => r.image), new Set(), hide);
+    expect(pick?.src).toMatch(/photos-1$/);
+    expect(reasonsFor(opp(["ev_int1_furnished", "ev_int1_3"]), byId).map((e) => e.id)).toEqual(["ev_int1_3"]);
   });
 
   it("gallery: one entry per picture, skipping 'not seen' notes", () => {

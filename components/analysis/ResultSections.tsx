@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { AlertTriangle, Calculator, Check, ChevronDown, HelpCircle, MapPinned } from "lucide-react";
+import { AlertTriangle, Calculator, Check, ChevronDown, HelpCircle, MapPinned, Sparkles } from "lucide-react";
 import type { AnalysisResponse, Evidence, Opportunity } from "@/lib/contracts";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { MarketDashboard } from "./MarketDashboard";
+import { delay, motion } from "./motion";
 import { VERDICTS } from "./opportunity-format";
-import { labelOf } from "./Recommendation";
+import { conceptFor, type ConceptManifest } from "./concepts";
+import { labelOf, useConceptManifest } from "./Recommendation";
 import { factsFor, insightsFor, MARKET_GAP, moneyFor, risksFor } from "./result-facts";
 import { reasonsFor, type ResultImage } from "./result-images";
 
@@ -20,15 +22,15 @@ export function MoneySummary({ o, a, onEvidence }: { o: Opportunity; a: Analysis
   const m = moneyFor(o, a, f);
   if (!m) return null;
   return (
-    <section aria-labelledby="money-heading" className="flex flex-col gap-4 rounded-2xl border bg-card p-4 sm:p-6">
+    <section key={o.id} aria-labelledby="money-heading" className={cn("flex h-full flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md sm:p-6", motion.rise)}>
       <h2 id="money-heading" className="flex items-center gap-2 text-xl font-semibold tracking-tight">
         <Calculator className="size-5 text-primary" aria-hidden="true" />
         The numbers
       </h2>
       {m.headline.length > 0 && (
         <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          {m.headline.map((h) => (
-            <div key={h.label}>
+          {m.headline.map((h, i) => (
+            <div key={h.label} className={cn("rounded-xl bg-muted/50 p-3", motion.rise)} style={delay(i + 1, 90)}>
               <dt className="text-sm text-muted-foreground">{h.label}</dt>
               <dd className="text-2xl font-semibold tabular-nums">{h.value}</dd>
             </div>
@@ -69,14 +71,14 @@ export function MarketInsights({ o, a, onEvidence }: { o: Opportunity; a: Analys
   const insights = insightsFor(o, a);
   if (insights.length === 0 && !a.marketAnalysis) return null;
   return (
-    <section aria-labelledby="market-heading" className="flex flex-col gap-4 rounded-2xl border bg-card p-4 sm:p-6">
+    <section key={o.id} aria-labelledby="market-heading" className={cn("flex h-full flex-col gap-4 rounded-2xl border bg-card p-4 shadow-sm transition-shadow hover:shadow-md sm:p-6", motion.rise)} style={delay(1, 120)}>
       <h2 id="market-heading" className="flex items-center gap-2 text-xl font-semibold tracking-tight">
         <MapPinned className="size-5 text-primary" aria-hidden="true" />
         The neighbourhood
       </h2>
       <ul className="flex flex-col gap-3">
-        {insights.map((i) => (
-          <li key={i.text}>
+        {insights.map((i, n) => (
+          <li key={i.text} className={motion.rise} style={delay(n + 2, 90)}>
             <button
               type="button"
               disabled={!i.evidenceId}
@@ -128,6 +130,7 @@ export function MatchCards({
   onEvidence: (id: string) => void;
 }) {
   const [all, setAll] = useState(false);
+  const manifest = useConceptManifest();
   const byId = new Map(a.evidence.map((e) => [e.id, e]));
   const others = a.opportunities.map((o, i) => ({ o, i })).filter(({ i }) => i !== selected);
   if (others.length === 0) return null;
@@ -140,9 +143,9 @@ export function MatchCards({
         {oneSpace ? "Other ideas for this space" : "More matches"}
       </h2>
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {shown.map(({ o, i }) => (
-          <li key={o.id}>
-            <MatchCard o={o} image={images[i]} byId={byId} a={a} oneSpace={oneSpace} onShow={() => onSelect(i)} onEvidence={onEvidence} />
+        {shown.map(({ o, i }, n) => (
+          <li key={o.id} className={motion.rise} style={delay(n, 90)}>
+            <MatchCard o={o} image={images[i]} manifest={manifest} byId={byId} a={a} oneSpace={oneSpace} onShow={() => onSelect(i)} onEvidence={onEvidence} />
           </li>
         ))}
       </ul>
@@ -156,17 +159,40 @@ export function MatchCards({
   );
 }
 
-function MatchCard({ o, image, byId, a, oneSpace, onShow, onEvidence }: { o: Opportunity; image: ResultImage | null; byId: Map<string, Evidence>; a: AnalysisResponse; oneSpace: boolean; onShow: () => void; onEvidence: (id: string) => void }) {
+function MatchCard({
+  o,
+  image: photo,
+  manifest,
+  byId,
+  a,
+  oneSpace,
+  onShow,
+  onEvidence,
+}: {
+  o: Opportunity;
+  image: ResultImage | null;
+  manifest: ConceptManifest;
+  byId: Map<string, Evidence>; a: AnalysisResponse; oneSpace: boolean; onShow: () => void; onEvidence: (id: string) => void }) {
   const f = factsFor(o, a.evidence);
   const reason = reasonsFor(o, byId)[0];
   const risk = risksFor(o, a.evidence, { specific: true })[0];
   const verdict = VERDICTS[o.verdict];
+  // Other ideas for ONE space would all show the same room: show each idea's own AI concept of
+  // that room instead, when there is one, labelled as such.
+  const concept = oneSpace ? conceptFor(o, manifest) : null;
+  const image = concept ? { src: concept.src, alt: `AI concept: this space as a ${labelOf(o.useCategory).toLowerCase()}` } : photo;
   const price = o.strategy === "acquisition" && f.askingPriceUsd ? `$${f.askingPriceUsd.toLocaleString("en-US")} asking` : f.rent;
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-2xl border bg-card">
-      <div className="relative aspect-[16/10] bg-muted">
-        {image && <Image src={image.src} alt={image.alt} fill unoptimized sizes="(min-width: 1024px) 400px, 100vw" className="object-cover" />}
+    <article className={cn("flex h-full flex-col overflow-hidden rounded-2xl border bg-card", motion.lift)}>
+      <div className="relative aspect-[16/10] overflow-hidden bg-muted">
+        {image && <Image src={image.src} alt={image.alt} fill unoptimized sizes="(min-width: 1024px) 400px, 100vw" className={cn("object-cover", motion.zoom)} />}
         <span className="absolute top-2 left-2 flex size-8 items-center justify-center rounded-full bg-card text-sm font-semibold shadow">{o.rank}</span>
+        {concept && (
+          <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-amber-500/90 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur">
+            <Sparkles className="size-3" aria-hidden="true" />
+            AI concept
+          </span>
+        )}
       </div>
       <div className="flex flex-1 flex-col gap-2.5 p-4">
         <div className="flex flex-wrap items-center gap-1.5">

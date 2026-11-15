@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AnalysisResponse, Evidence, Opportunity } from "@/lib/contracts";
 import { travisAnalysisFixture } from "@/lib/contracts/examples/travis";
-import { conceptFor } from "@/components/analysis/concepts";
+import { conceptFor, emptyViewFor } from "@/components/analysis/concepts";
 import { spaceImagesFor } from "@/components/analysis/result-images";
 
 const NOW = "2026-11-14T00:00:00.000Z";
@@ -46,6 +46,23 @@ describe("spaceImagesFor", () => {
   });
 
   it("returns nothing for a space that was never scanned, so the page falls back to the aerial", () => {
-    expect(spaceImagesFor(opp(3, 33), a)).toEqual({ images: [], modelId: null });
+    expect(spaceImagesFor(opp(3, 33), a)).toEqual({ images: [], hidden: 0, modelId: null });
+  });
+
+  it("hides photos the vision step saw furniture in, but keeps the 3D tour", () => {
+    const furnished = { ...obs("ev_int1_furnished", "AAAAAAAAAAA", 0), sources: [obs("x", "AAAAAAAAAAA", 0).sources[0]] };
+    const some = { ...a, evidence: [...a.evidence, furnished], toolCalls: [call(1, 1, 11, ["a1", "a2", "ev_int1_furnished"])] } as AnalysisResponse;
+    expect(spaceImagesFor(opp(1, 11), some)).toEqual({ images: [expect.objectContaining({ src: "/api/imagery/matterport/AAAAAAAAAAA/photos-1" })], hidden: 1, modelId: "AAAAAAAAAAA" });
+
+    const all = { ...some, evidence: [...some.evidence, { ...furnished, id: "ev_int2_furnished", sources: [obs("y", "AAAAAAAAAAA", 1).sources[0]] }] } as AnalysisResponse;
+    expect(spaceImagesFor(opp(1, 11), all)).toEqual({ images: [], hidden: 2, modelId: "AAAAAAAAAAA" });
+  });
+});
+
+describe("emptyViewFor", () => {
+  it("returns this space's own furniture-removed view, only from our /concepts/ path", () => {
+    expect(emptyViewFor(opp(1, 11), { p1: {}, "p1-s11": { empty: "/concepts/p1-s11/empty.webp" } })).toBe("/concepts/p1-s11/empty.webp");
+    expect(emptyViewFor(opp(1, 11), { "p1-s11": { empty: "https://evil.example/e.webp" } })).toBeNull();
+    expect(emptyViewFor(opp(1, 12), { "p1-s11": { empty: "/concepts/p1-s11/empty.webp" } })).toBeNull();
   });
 });

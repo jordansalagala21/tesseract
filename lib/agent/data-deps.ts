@@ -250,7 +250,8 @@ export function liveDataDeps(m: DataModules, opts: LiveDepsOptions): DataDeps {
         const property = await loadProperty(propertyId);
         const found = modelFor(property, await m.getSpaces(propertyId), spaceId);
         if (!found) throw new ToolUnavailableError(spaceId ? `No Matterport scan is linked to space ${spaceId}.` : `No Matterport scan is linked to property ${propertyId}.`);
-        const assets = await m.getModelImages(found.modelId, 6);
+        // Eight photos (the vision limit) so a scan with some furnished rooms still yields bare ones.
+        const assets = await m.getModelImages(found.modelId, 8);
         if (assets.length === 0) throw new ToolUnavailableError(`Matterport scan ${found.modelId} returned no photos.`);
         const images = await Promise.all(
           assets.map(async (a): Promise<VisionImage> => ({ data: await m.download(a.url), source: a.source, kind: a.kind, mediaRef: found.modelId })),

@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import type { AgentToolCall, Opportunity } from "@/lib/contracts";
 import { travisAnalysisFixture } from "@/lib/contracts/examples/travis";
 import { AnalysisResults } from "@/components/analysis/AnalysisResults";
+import { defaultAssumption, runScenario } from "@/lib/finance";
 import { PageHeader, PageShell } from "@/components/site/PageShell";
 import { Notice } from "@/components/ui/notice";
 
@@ -119,16 +120,32 @@ const exampleAcquisition: Opportunity = {
   financialScenarioIds: [],
 };
 
+// Example purchase numbers typed in by hand so the buying controls can be checked. Only the
+// rentable area is a CoStar fact; there is no sale listing or price for this property.
+const exampleBuyScenario = runScenario(
+  {
+    mode: "acquisition",
+    purchasePriceUsd: { value: 12_000_000, origin: "user", label: "Purchase price (example user input)" },
+    rentableSf: { value: 36_932, origin: "costar", label: "Rentable building area" },
+    marketRentPsfYear: { value: 45, origin: "user", label: "Market rent $/SF/yr (example user input)" },
+    vacancyAllowancePct: defaultAssumption("vacancyAllowancePct"),
+    operatingExpensePsfYear: { value: 12, origin: "user", label: "Operating expenses $/SF/yr (example user input)" },
+    capexUsd: { value: 0, origin: "user", label: "Upfront improvements (example user input)" },
+    equityUsd: { value: 4_000_000, origin: "user", label: "Cash put in (example user input)" },
+  },
+  { id: "scn_demo_buy", name: "Example: buy the building (made-up price)" },
+);
+
 export default function AnalysisPreviewPage() {
   const a = travisAnalysisFixture;
   return (
     <PageShell>
         <PageHeader title="Analysis preview" description="Shows how analysis results will look before the agent is connected." />
-        <Notice title="Sample data">Step 1 and the first ranked use are the 2600 Travis St development fixture. Steps 2 to 7 and the “Example” acquisition card are example states for checking the design. None of this is live agent output.</Notice>
+        <Notice title="Sample data">Step 1 and the first ranked use are the 2600 Travis St development fixture. Steps 2 to 7 and the “Example” acquisition card are example states for checking the design, and the buying scenario uses a made-up price. None of this is live agent output.</Notice>
         <AnalysisResults analysis={{ ...a, status: "running", toolCalls: [...a.toolCalls, ...uiStateSteps] }} />
         <div className="flex flex-col gap-3">
           <p className="text-base font-medium text-muted-foreground">Investor view: buying and leasing stay separate</p>
-          <AnalysisResults analysis={{ ...a, persona: "investor", opportunities: [...a.opportunities, exampleAcquisition] }} showTimeline={false} />
+          <AnalysisResults analysis={{ ...a, persona: "investor", opportunities: [...a.opportunities, exampleAcquisition], financialScenarios: [exampleBuyScenario] }} showTimeline={false} />
         </div>
     </PageShell>
   );

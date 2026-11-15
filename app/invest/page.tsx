@@ -1,17 +1,15 @@
 import type { Metadata } from "next";
-import { InvestPlanner } from "@/components/forms/InvestPlanner";
-import { PageHeader, PageShell } from "@/components/site/PageShell";
+import { StageInvest } from "@/components/forms/StageInvest";
+import { PageShell } from "@/components/site/PageShell";
 
 export const metadata: Metadata = { title: "I have capital | Tesseract" };
 
+// A deliberately empty page: Tess slides in and asks the questions one at a time.
 export default function InvestPage() {
   return (
     <PageShell>
-      <PageHeader
-        title="I have capital"
-        description="Find buildings to buy and spaces to lease in Houston and Los Angeles, with the evidence for each one."
-      />
-      <InvestPlanner />
+      <h1 className="sr-only">I have capital: find buildings to buy and spaces to lease</h1>
+      <StageInvest />
     </PageShell>
   );
 }

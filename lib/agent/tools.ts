@@ -258,7 +258,12 @@ function absorb(state: AgentState, out: ToolOutput): ToolResult {
   };
 }
 
-function scoreUses(state: AgentState, input: z.infer<(typeof TOOL_INPUTS)["score_uses"]>): ToolResult {
+/** Score uses for one subject from the facts gathered so far. Also used by the orchestrator's safety net. */
+export function scoreSubject(state: AgentState, input: { subject: string; useCategories: UseCategory[] }): ToolResult {
+  return scoreUses(state, input);
+}
+
+function scoreUses(state: AgentState, input: { subject: string; useCategories: UseCategory[] }): ToolResult {
   // Property-level facts (e.g. aerial observations) apply to every space in the property.
   const parent = parseSubject(input.subject);
   const propertyFacts = parent?.spaceId ? state.facts[subjectKey(parent.propertyId)] : undefined;

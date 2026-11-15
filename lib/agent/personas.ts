@@ -95,7 +95,7 @@ export function personaPrompt(request: AnalysisRequest): string {
         `Persona: business starter. Concept: "${i.businessConcept}". Needs ${i.sfMin.toLocaleString("en-US")}–${i.sfMax.toLocaleString("en-US")} SF in ${i.markets.join(", ")}.`,
         i.maxRentPsfYear ? `Budget: up to $${i.maxRentPsfYear}/SF/yr (user assumption, evidence ev_user_budget).` : "No rent budget given.",
         i.mustHaves.length > 0 && `Must-haves: ${i.mustHaves.join("; ")}.`,
-        "Strategy: pick the use category closest to the concept → search_available_spaces → get_property_profile for at least 3 candidate spaces when 3 exist (one subject per space) → score_uses for that one category on each space → run_financial_scenario (lease) for the best fits → submit_report with one opportunity per space.",
+        "Strategy: pick the use category closest to the concept → search_available_spaces (with spaceUses, e.g. Retail for a café or shop) → get_property_profile for at least 3 candidate spaces when 3 exist (one subject per space) → get_nearby_context for each candidate space (same-category businesses and likely customers nearby; it is instant) → score_uses for that one category on each space → run_financial_scenario (lease) for the best fits → submit_report with one opportunity per space.",
         "Emphasis: rent fit and physical fit. For each space, list the questions to ask the listing broker under nextSteps.",
       );
       break;

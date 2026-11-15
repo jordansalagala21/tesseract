@@ -27,7 +27,7 @@ import {
   type Opportunity,
 } from "@/lib/contracts";
 import { AgentToolName as ToolNameSchema } from "@/lib/contracts";
-import { USES } from "@/lib/market/uses";
+import { USE_CATEGORIES, USES, type UseCategory } from "@/lib/market/uses";
 import { allowedStrategies, orderForPersona, personaPrompt, personaWeights } from "./personas";
 import { EvidenceRegistry, type EvidenceDraft } from "./evidence";
 import {
@@ -37,6 +37,7 @@ import {
   UNAVAILABLE_DEPS,
   parseSubject,
   runTool,
+  scoreSubject,
   toolDefinitions,
   type AgentState,
   type DataDeps,
@@ -157,6 +158,48 @@ function buildOpportunities(report: ReportInput | null, state: AgentState, reque
     .map((o, i) => ({ ...o, rank: i + 1, id: `opp_${i + 1}` }));
 }
 
+/** Calculation tools: deterministic and instant, so they don't spend the investigation budget. */
+const COMPUTE_TOOLS = new Set<AgentToolName>(["score_uses", "run_financial_scenario"]);
+
+/**
+ * Safety net: score any (subject, use) the report names but the agent never scored, using the
+ * facts it gathered. Scores still come only from lib/market, and each pass is recorded in the
+ * timeline so it's clear the system, not the model, filled the gap. Subjects with no facts stay
+ * unscored and are dropped as before.
+ */
+function autoScore(report: ReportInput, state: AgentState, toolCalls: AgentToolCall[], now: () => string) {
+  const missing = new Map<string, Set<string>>();
+  for (const o of report.opportunities) {
+    if (!(USE_CATEGORIES as string[]).includes(o.useCategory)) continue;
+    if (state.scores[o.subject]?.[o.useCategory as UseCategory]) continue;
+    (missing.get(o.subject) ?? missing.set(o.subject, new Set()).get(o.subject)!).add(o.useCategory);
+  }
+  for (const [subject, uses] of missing) {
+    const input = { subject, useCategories: [...uses] as UseCategory[] };
+    const at = now();
+    const call: AgentToolCall = {
+      id: `tc_${toolCalls.length + 1}`,
+      step: toolCalls.length + 1,
+      tool: "score_uses",
+      reason: "Scored automatically: the agent reported these ideas without scoring them.",
+      input,
+      status: "succeeded",
+      startedAt: at,
+      finishedAt: at,
+      outputSummary: null,
+      evidenceIds: [],
+      error: null,
+    };
+    try {
+      const r = scoreSubject(state, input);
+      Object.assign(call, { outputSummary: r.summary, evidenceIds: r.evidenceIds });
+    } catch (e) {
+      Object.assign(call, { status: "failed", error: e instanceof Error ? e.message : String(e) });
+    }
+    toolCalls.push(call);
+  }
+}
+
 /** Facts the kit never has, recorded up front so no analysis implies they were checked. */
 function seedStandingGaps(state: AgentState) {
   state.evidence.add({
@@ -250,7 +293,9 @@ export async function runAnalysis(opts: RunOptions): Promise<AnalysisResponse> {
   let nudged = false;
 
   try {
-    // Each loop turn is one model call. The step budget counts investigation tool calls.
+    // Each loop turn is one model call. The step budget counts investigation (data) tool calls
+    // only: scoring and scenarios are instant calculations and must stay possible after the
+    // budget is spent, or an agent that explored thoroughly would end with nothing scored.
     for (let turn = 0; turn < request.options.maxAgentSteps + 4; turn++) {
       const response = await opts.createMessage({
         model: opts.model,
@@ -276,8 +321,12 @@ export async function runAnalysis(opts: RunOptions): Promise<AnalysisResponse> {
         continue;
       }
 
-      const results: BetaToolResultBlockParam[] = [];
-      for (const use of toolUses) {
+      // Results keep the model's order. Data tools in one turn run in parallel (vision on six
+      // images is the slow part); calculations then run in order, so a score_uses in the same
+      // turn sees the facts those data tools just gathered.
+      const results: (BetaToolResultBlockParam | null)[] = toolUses.map(() => null);
+      const runs: { index: number; use: BetaToolUseBlock; tool: AgentToolName; call: AgentToolCall; investigative: boolean }[] = [];
+      toolUses.forEach((use, index) => {
         if (use.name === SUBMIT_REPORT) {
           const parsed = ReportInput.safeParse(use.input);
           if (parsed.success) {
@@ -285,19 +334,19 @@ export async function runAnalysis(opts: RunOptions): Promise<AnalysisResponse> {
             for (const m of parsed.data.missing) {
               state.evidence.add({ kind: "missing", statement: m.statement, whyNeeded: m.whyNeeded, howToResolve: m.howToResolve, sources: [] });
             }
-            results.push({ type: "tool_result", tool_use_id: use.id, content: "Report received." });
+            results[index] = { type: "tool_result", tool_use_id: use.id, content: "Report received." };
           } else {
-            results.push({ type: "tool_result", tool_use_id: use.id, is_error: true, content: `Invalid report: ${parsed.error.message}` });
+            results[index] = { type: "tool_result", tool_use_id: use.id, is_error: true, content: `Invalid report: ${parsed.error.message}` };
           }
-          continue;
+          return;
         }
 
         const name = ToolNameSchema.safeParse(use.name);
         const input = (use.input ?? {}) as Record<string, unknown>;
         const reasonText = typeof input.reason === "string" && input.reason ? input.reason : "No reason given.";
         if (!name.success) {
-          results.push({ type: "tool_result", tool_use_id: use.id, is_error: true, content: `Unknown tool ${use.name}.` });
-          continue;
+          results[index] = { type: "tool_result", tool_use_id: use.id, is_error: true, content: `Unknown tool ${use.name}.` };
+          return;
         }
 
         const call: AgentToolCall = {
@@ -314,35 +363,45 @@ export async function runAnalysis(opts: RunOptions): Promise<AnalysisResponse> {
           error: null,
         };
 
-        if (steps >= request.options.maxAgentSteps) {
+        const investigative = !COMPUTE_TOOLS.has(name.data);
+        if (investigative && steps >= request.options.maxAgentSteps) {
           toolCalls.push({ ...call, status: "skipped", finishedAt: now(), error: "Step limit reached." });
-          results.push({ type: "tool_result", tool_use_id: use.id, is_error: true, content: `Step limit reached. Call ${SUBMIT_REPORT} now.` });
-          continue;
+          results[index] = { type: "tool_result", tool_use_id: use.id, is_error: true, content: `Investigation step limit reached. Call score_uses for each candidate you gathered facts on, then ${SUBMIT_REPORT}.` };
+          return;
         }
-        steps++;
+        if (investigative) steps++;
         toolCalls.push(call);
-        publish();
+        runs.push({ index, use, tool: name.data, call, investigative });
+      });
+      publish();
 
+      const execute = async ({ index, use, tool, call, investigative }: (typeof runs)[number]) => {
+        if (!investigative) call.startedAt = now();
         try {
-          const r = await runTool(name.data, use.input, state, deps);
+          const r = await runTool(tool, use.input, state, deps);
           Object.assign(call, { status: "succeeded", finishedAt: now(), outputSummary: r.summary, evidenceIds: r.evidenceIds });
-          results.push({ type: "tool_result", tool_use_id: use.id, content: JSON.stringify(r.forModel) });
+          const left = request.options.maxAgentSteps - steps;
+          const budget = investigative && left <= 2 ? `\n[${left} investigation step${left === 1 ? "" : "s"} left. Leave time to score_uses and ${SUBMIT_REPORT}.]` : "";
+          results[index] = { type: "tool_result", tool_use_id: use.id, content: JSON.stringify(r.forModel) + budget };
         } catch (e) {
           // A failed tool is recorded and the investigation continues.
           const message = e instanceof Error ? e.message : String(e);
           Object.assign(call, { status: "failed", finishedAt: now(), error: message });
-          if (e instanceof ToolUnavailableError) recordToolGap(state, name.data, message);
+          if (e instanceof ToolUnavailableError) recordToolGap(state, tool, message);
           const hint = e instanceof ToolUnavailableError ? " Continue without it and list the gap under missing." : "";
-          results.push({ type: "tool_result", tool_use_id: use.id, is_error: true, content: message + hint });
+          results[index] = { type: "tool_result", tool_use_id: use.id, is_error: true, content: message + hint };
         }
         publish();
-      }
+      };
+      await Promise.all(runs.filter((r) => r.investigative).map(execute));
+      for (const r of runs.filter((r) => !r.investigative)) await execute(r);
 
       // All tool results go back in one user message.
-      messages.push({ role: "user", content: results });
+      messages.push({ role: "user", content: results.filter((r): r is BetaToolResultBlockParam => r !== null) });
       if (report) break;
     }
     if (!report) error = "The agent finished without submitting a report.";
+    else autoScore(report, state, toolCalls, now);
   } catch (e) {
     error = e instanceof Error ? e.message : String(e);
   }

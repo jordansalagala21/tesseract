@@ -195,6 +195,70 @@ describe("runAnalysis", () => {
     expect(r.status).toBe("completed");
   });
 
+  it("runs a turn's data tools in parallel, then calculations in order", async () => {
+    // Each data tool waits until the other has started: run one after another, this never finishes.
+    let release!: () => void;
+    const bothStarted = new Promise<void>((r) => (release = r));
+    let started = 0;
+    const gate = async () => {
+      if (++started === 2) release();
+      await bothStarted;
+    };
+    const parallelDeps: DataDeps = {
+      ...deps,
+      getPropertyProfile: async () => (await gate(), travisProfile),
+      getNearbyContext: async () => (await gate(), { summary: "nearby", evidence: [] }),
+    };
+    const { create } = script([
+      message([
+        toolUse("get_property_profile", { reason: "Facts.", propertyId: 1018657, spaceId: 21053094 }),
+        toolUse("get_nearby_context", { reason: "Market.", propertyId: 1018657 }),
+        // Same turn: must still see the profile's facts.
+        toolUse("score_uses", { reason: "Score.", subject: SUBJECT, useCategories: ["fitness_studio"] }),
+      ]),
+      message([toolUse("submit_report", { opportunities: [{ ...report.opportunities[0], supportingEvidenceIds: ["ev_sf"] }], missing: [] })]),
+    ]);
+    const r = await runAnalysis({ id: "t9p", request, createMessage: create, model: "test", deps: parallelDeps });
+    expect(r.toolCalls.map((c) => [c.tool, c.status])).toEqual([
+      ["get_property_profile", "succeeded"],
+      ["get_nearby_context", "succeeded"],
+      ["score_uses", "succeeded"],
+    ]);
+    expect(r.opportunities[0].scores.physical.score).toBe(100);
+  });
+
+  it("still allows scoring after the investigation budget is spent", async () => {
+    const limited = AnalysisRequest.parse({ ...request, options: { ...request.options, maxAgentSteps: 1 } });
+    const { create } = script([
+      message([toolUse("get_property_profile", { reason: "a", propertyId: 1018657, spaceId: 21053094 })]),
+      message([toolUse("score_uses", { reason: "Score.", subject: SUBJECT, useCategories: ["fitness_studio"] })]),
+      message([toolUse("submit_report", { opportunities: [{ ...report.opportunities[0], supportingEvidenceIds: ["ev_sf"] }], missing: [] })]),
+    ]);
+    const r = await runAnalysis({ id: "t9b", request: limited, createMessage: create, model: "test", deps });
+    expect(r.toolCalls.map((c) => [c.tool, c.status])).toEqual([["get_property_profile", "succeeded"], ["score_uses", "succeeded"]]);
+    expect(r.opportunities).toHaveLength(1);
+  });
+
+  it("scores reported ideas the agent forgot to score, and says so in the timeline", async () => {
+    const { create } = script([
+      message([toolUse("get_property_profile", { reason: "Facts.", propertyId: 1018657, spaceId: 21053094 })]),
+      message([toolUse("submit_report", report)]),
+    ]);
+    const r = await runAnalysis({ id: "t9c", request, createMessage: create, model: "test", deps });
+    const auto = r.toolCalls.at(-1)!;
+    expect(auto).toMatchObject({ tool: "score_uses", status: "succeeded", input: { subject: SUBJECT, useCategories: ["fitness_studio", "cafe"] } });
+    expect(auto.reason).toMatch(/Scored automatically/);
+    expect(r.opportunities.map((o) => o.useCategory).sort()).toEqual(["cafe", "fitness_studio"]);
+    expect(r.opportunities.every((o) => o.scores.physical.score !== null)).toBe(true);
+  });
+
+  it("drops a reported idea for a subject with no gathered facts", async () => {
+    const { create } = script([message([toolUse("submit_report", { opportunities: [{ ...report.opportunities[0], subject: "p42-s1" }], missing: [] })])]);
+    const r = await runAnalysis({ id: "t9d", request, createMessage: create, model: "test", deps });
+    expect(r.opportunities).toEqual([]);
+    expect(r.toolCalls.at(-1)).toMatchObject({ tool: "score_uses", status: "failed" });
+  });
+
   it("nudges once for a report, then fails honestly if none comes", async () => {
     const { create, calls } = script([message([{ type: "text", text: "Done." }], "end_turn"), message([{ type: "text", text: "Still done." }], "end_turn")]);
     const r = await runAnalysis({ id: "t10", request, createMessage: create, model: "test", deps });

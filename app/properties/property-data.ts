@@ -1,82 +1,69 @@
-// The one data-fetch module for the property pages (UI-02).
-// It calls the live routes (DATA-02, DATA-03). While a route still answers 501 Not Implemented,
-// it falls back to the 2600 Travis St contract fixtures and marks the result as sample data.
+// The one data-fetch module for the property pages (UI-02, INT-01).
+// Every page reads live CoStar data through the property routes (DATA-02, DATA-03). There is no
+// fixture fallback: if a route fails, the page says the data is unavailable instead of showing
+// sample data that could be mistaken for live output (CLAUDE.md §6.8).
 import "server-only";
 import { notFound } from "next/navigation";
-import type { z } from "zod";
-import {
-  PropertyDetailResponse,
-  PropertySearchResponse,
-  PropertySpacesResponse,
-  type Market,
-  type PropertySummary,
-} from "@/lib/contracts";
-import { travisOrtho, travisProperty, travisSpaces, travisSuite100Model } from "@/lib/contracts/examples/travis";
+import { connection } from "next/server";
+import { z } from "zod";
+import { PropertyDetailResponse, PropertySearchResponse, PropertySpacesResponse, type Market } from "@/lib/contracts";
 
-export type Loaded<T> = { data: T; sample: boolean };
+/**
+ * Why a page has no data. "not_set_up" means this server has no CoStar database yet
+ * (`npm run db:build`); "unavailable" covers every other failure.
+ */
+export type Unavailable = { ok: false; reason: "not_set_up" | "unavailable" };
+export type Loaded<T> = { ok: true; data: T } | Unavailable;
 
 // Loopback to this same Next.js server. Fixed on purpose: deriving it from the Host header
 // would let a forged request make the server fetch any host (SSRF).
 const ORIGIN = `http://127.0.0.1:${process.env.PORT ?? 3000}`;
 
-async function getJson<S extends z.ZodType>(path: string, schema: S): Promise<z.infer<S> | null> {
-  const res = await fetch(ORIGIN + path, { cache: "no-store" });
-  if (res.status === 501) return null;
+async function getJson<S extends z.ZodType>(path: string, schema: S): Promise<Loaded<z.infer<S>>> {
+  // Property data is per request (live listings, signed imagery). Without this, Next 16's
+  // prerender check reaches fetch(), which reads the clock, and logs "unstable value Date.now()".
+  await connection();
+  let res: Response;
+  try {
+    res = await fetch(ORIGIN + path, { cache: "no-store" });
+  } catch (error) {
+    console.error(`[property-data] ${path} did not answer:`, error instanceof Error ? error.message : error);
+    return { ok: false, reason: "unavailable" };
+  }
   if (res.status === 404) notFound();
-  if (!res.ok) throw new Error(`${path} answered ${res.status}`);
-  return schema.parse(await res.json());
+  if (!res.ok) {
+    // The route's own message says when the database has not been built. Log the status only:
+    // the body is for developers and is not shown to the user.
+    const body = await res.text().catch(() => "");
+    console.error(`[property-data] ${path} answered ${res.status}`);
+    return { ok: false, reason: body.includes("db:build") ? "not_set_up" : "unavailable" };
+  }
+  const parsed = schema.safeParse(await res.json().catch(() => null));
+  if (!parsed.success) {
+    console.error(`[property-data] ${path} returned data that doesn't match the contract:\n${z.prettifyError(parsed.error)}`);
+    return { ok: false, reason: "unavailable" };
+  }
+  return { ok: true, data: parsed.data };
 }
-
-const sampleSummary: PropertySummary = {
-  id: travisProperty.id,
-  name: travisProperty.name,
-  address: travisProperty.address,
-  location: travisProperty.location,
-  market: travisProperty.market,
-  propertyType: travisProperty.propertyType,
-  buildingClass: travisProperty.buildingClass,
-  rentableAreaSf: travisProperty.rentableAreaSf,
-  availableSpaceCount: travisSpaces.length,
-  hasMatterport: travisProperty.matterportModelIds.length > 0,
-  hasSuiteMatched3d: travisSpaces.some((s) => s.matterport),
-};
 
 export type SearchParams = { q?: string; market?: Market };
 
-export async function searchProperties(params: SearchParams): Promise<Loaded<z.infer<typeof PropertySearchResponse>>> {
+export function searchProperties(params: SearchParams) {
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
   if (params.market) qs.set("market", params.market);
-  const live = await getJson(`/api/properties?${qs}`, PropertySearchResponse);
-  if (live) return { data: live, sample: false };
-
-  const { name, address, market } = sampleSummary;
-  const haystack = `${name ?? ""} ${address.street} ${address.city}`.toLowerCase();
-  const hit = (!params.q || haystack.includes(params.q.toLowerCase())) && (!params.market || params.market === market);
-  return { data: { items: hit ? [sampleSummary] : [], total: hit ? 1 : 0 }, sample: true };
+  return getJson(`/api/properties?${qs}`, PropertySearchResponse);
 }
 
-export async function getPropertyPage(id: number) {
+/** Detail and spaces load in parallel; the page needs both, so either failing makes it unavailable. */
+export async function getPropertyPage(
+  id: number,
+): Promise<Loaded<{ detail: z.infer<typeof PropertyDetailResponse>; spaces: z.infer<typeof PropertySpacesResponse> }>> {
   const [detail, spaces] = await Promise.all([
     getJson(`/api/properties/${id}`, PropertyDetailResponse),
     getJson(`/api/properties/${id}/spaces`, PropertySpacesResponse),
   ]);
-  if (detail && spaces) return { detail, spaces, sample: false };
-  if (id !== travisProperty.id) notFound();
-
-  return {
-    detail: detail ?? {
-      property: travisProperty,
-      matterportModels: [travisSuite100Model],
-      aerial: [travisOrtho],
-      // The fixture has no tenant rows; the page says so instead of inventing names.
-      currentTenants: [],
-    },
-    spaces: spaces ?? {
-      propertyId: id,
-      items: travisSpaces,
-      availabilityNote: "Advertised availability from CoStar listings — not confirmed physical vacancy." as const,
-    },
-    sample: true,
-  };
+  if (!detail.ok) return detail;
+  if (!spaces.ok) return spaces;
+  return { ok: true, data: { detail: detail.data, spaces: spaces.data } };
 }

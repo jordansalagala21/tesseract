@@ -55,7 +55,7 @@ export class ToolUnavailableError extends Error {}
 export const PropertyRef = z.object({ propertyId: z.number().int(), spaceId: z.number().int().optional() });
 
 export interface DataDeps {
-  searchProperties(input: { query?: string; market?: string; hasAvailableSpace?: boolean; limit?: number }): Promise<ToolOutput>;
+  searchProperties(input: { query?: string; market?: string; hasAvailableSpace?: boolean; forSale?: boolean; maxAskingPriceUsd?: number; limit?: number }): Promise<ToolOutput>;
   searchAvailableSpaces(input: { market?: string; sfMin?: number; sfMax?: number; maxRentPsfYear?: number; spaceUses?: string[]; limit?: number }): Promise<ToolOutput>;
   getPropertyProfile(input: { propertyId: number; spaceId?: number }): Promise<ToolOutput>;
   getNearbyContext(input: { propertyId: number; spaceId?: number; radiusMeters?: number; useCategories?: UseCategory[] }): Promise<ToolOutput>;
@@ -109,6 +109,8 @@ export const TOOL_INPUTS = {
     query: z.string().optional().describe("Address or building name text"),
     market: z.enum(["houston", "los_angeles"]).optional(),
     hasAvailableSpace: z.boolean().optional(),
+    forSale: z.boolean().optional().describe("Only buildings listed for sale (asking price, asking cap rate, NOI when the listing states them)."),
+    maxAskingPriceUsd: z.number().positive().optional().describe("With forSale: only listings with a disclosed asking price at or below this."),
     limit: z.number().int().min(1).max(20).optional(),
   }),
   search_available_spaces: z.object({
@@ -258,7 +260,12 @@ function absorb(state: AgentState, out: ToolOutput): ToolResult {
   };
 }
 
-function scoreUses(state: AgentState, input: z.infer<(typeof TOOL_INPUTS)["score_uses"]>): ToolResult {
+/** Score uses for one subject from the facts gathered so far. Also used by the orchestrator's safety net. */
+export function scoreSubject(state: AgentState, input: { subject: string; useCategories: UseCategory[] }): ToolResult {
+  return scoreUses(state, input);
+}
+
+function scoreUses(state: AgentState, input: { subject: string; useCategories: UseCategory[] }): ToolResult {
   // Property-level facts (e.g. aerial observations) apply to every space in the property.
   const parent = parseSubject(input.subject);
   const propertyFacts = parent?.spaceId ? state.facts[subjectKey(parent.propertyId)] : undefined;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
 import { AnalyzeAcceptedResponse, type PersonaInput } from "@/lib/contracts";
 import type { Checked } from "./form-logic";
@@ -20,6 +21,7 @@ export function useAnalyzeForm<T extends PersonaInput>(check: (fd: FormData) => 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [tried, setTried] = useState(false);
   const [state, setState] = useState<SubmitState>({ kind: "idle" });
+  const router = useRouter();
 
   function onChange(e: React.FormEvent<HTMLFormElement>) {
     if (tried) setErrors(check(new FormData(e.currentTarget)).errors);
@@ -53,6 +55,8 @@ export function useAnalyzeForm<T extends PersonaInput>(check: (fd: FormData) => 
         return setState({ kind: "failed", message: body?.error?.message ?? `The analysis service answered ${res.status}.` });
       }
       setState({ kind: "started", analysisId: accepted.data.analysisId });
+      // Open the live results page (INT-04); the agent keeps working on the server.
+      router.push(`/analysis/${accepted.data.analysisId}`);
     } catch {
       setState({ kind: "failed", message: "The analysis service couldn’t be reached. Check your connection and try again." });
     }

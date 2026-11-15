@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DoorClosed, Users } from "lucide-react";
 import { EmptyState } from "@/components/ui/states";
+import { AnalyzeSpaceButton } from "@/components/analysis/AnalyzeSpaceButton";
 import type { AvailableSpace, Property } from "@/lib/contracts";
 import { PropertyDetailResponse } from "@/lib/contracts";
 import type { z } from "zod";
@@ -103,6 +104,9 @@ export function SpaceList({ spaces, note }: { spaces: AvailableSpace[]; note: st
                       {s.floorPlanImageUrl && <Chip>Floor plan</Chip>}
                       {s.availabilityStatus === "lease_pending" && <Chip>Lease pending</Chip>}
                     </div>
+                    <div className="mt-3">
+                      <AnalyzeSpaceButton propertyId={s.propertyId} spaceId={s.id} label={`Analyze ${s.suite ? `Suite ${s.suite}` : "this space"}`} />
+                    </div>
                   </div>
                   <p className={rent ? "shrink-0 text-lg font-semibold tabular-nums" : "shrink-0 text-base text-muted-foreground"}>
                     {rent ?? "Rate not published"}
@@ -117,16 +121,17 @@ export function SpaceList({ spaces, note }: { spaces: AvailableSpace[]; note: st
   );
 }
 
-export function TenantList({ tenants, recorded, sample }: { tenants: Tenant[]; recorded: number; sample: boolean }) {
+export function TenantList({ tenants, recorded }: { tenants: Tenant[]; recorded: number }) {
   return (
     <section aria-labelledby="tenants-heading">
       <SectionHeading id="tenants-heading" detail={`${recorded} recorded`}>
         Current tenants
       </SectionHeading>
       {tenants.length === 0 ? (
-        <EmptyState title={sample ? "Tenant names not shown yet" : "No current tenants"} icon={Users}>
-          {sample
-            ? `CoStar records ${recorded} current ${recorded === 1 ? "tenant" : "tenants"} here. Names appear once the property API is connected.`
+        // CoStar can count tenants without listing them; don't say "no tenants" next to "3 recorded".
+        <EmptyState title={recorded > 0 ? "Tenant names not listed" : "No current tenants"} icon={Users}>
+          {recorded > 0
+            ? `CoStar counts ${recorded} current ${recorded === 1 ? "tenant" : "tenants"} here but doesn’t list their names.`
             : "CoStar records no current tenants for this property."}
         </EmptyState>
       ) : (

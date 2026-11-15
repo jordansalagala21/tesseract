@@ -14,6 +14,7 @@ import type { AerialImagery, MatterportModel, SourceRef } from "@/lib/contracts"
 import type { CostarLink, ModelImage } from "@/lib/data/matterport";
 import type { NearbyContext } from "@/lib/data/nearby";
 import type { AvailableSpace, Property, PropertySearchQuery, PropertySearchResult } from "@/lib/data/properties";
+import type { SaleListing, SaleListingQuery } from "@/lib/data/sale-listings";
 import type { CurrentTenant } from "@/lib/data/tenants";
 import type { FetchImageInput, FetchedImage } from "@/lib/data/vexcel";
 import type { SiteFacts } from "@/lib/market/scoring";
@@ -29,6 +30,8 @@ export interface DataModules {
   getProperty(id: number): Promise<Property | null>;
   getSpaces(propertyId: number): Promise<AvailableSpace[]>;
   getCurrentTenants(propertyId: number): Promise<CurrentTenant[]>;
+  searchSaleListings(query: SaleListingQuery): Promise<{ items: SaleListing[]; total: number }>;
+  getSaleListings(propertyId: number): Promise<SaleListing[]>;
   getNearbyContext(propertyId: number, radiusMeters: number): Promise<NearbyContext>;
   getMatterportModel(modelId: string, costar: CostarLink): Promise<MatterportModel | null>;
   getModelImages(modelId: string, limit?: number): Promise<ModelImage[]>;
@@ -54,6 +57,8 @@ const now = () => new Date().toISOString();
 const costar = (dataset: string, recordId: number | string, field: string): SourceRef[] => [
   { system: "costar", dataset, recordId: String(recordId), field, retrievedAt: now() },
 ];
+/** "GeneralRetail" → "general retail", "Freestanding" → "freestanding". */
+const humanize = (code: string) => code.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
 const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 
 /** "FirstFloor"/"Ground" → true, other floors → false, anything else → unknown. */
@@ -91,6 +96,9 @@ function modelFor(property: Property, spaces: AvailableSpace[], spaceId?: number
 const sfText = (s: AvailableSpace) =>
   s.sfMin && s.sfMax && s.sfMin !== s.sfMax ? `${fmt(s.sfMin)}–${fmt(s.sfMax)} SF` : s.sfMax ?? s.sfMin ? `${fmt((s.sfMax ?? s.sfMin)!)} SF` : "size not published";
 
+/** Listings that can no longer be bought. */
+const UNAVAILABLE_SALE = ["UnderContract", "Escrow", "Sold", "OffMarket"];
+
 const spaceLabel = (s: AvailableSpace) => (s.suite ? `Suite ${s.suite}` : `Space ${s.id}`);
 
 /* --------------------------------------------------------------- profiles */
@@ -101,6 +109,7 @@ export function profileOutput(
   spaces: AvailableSpace[],
   tenants: CurrentTenant[],
   spaceId?: number,
+  saleListings: SaleListing[] = [],
 ): ToolOutput {
   const evidence: EvidenceDraft[] = [];
   const facts: Record<string, SiteFacts> = {};
@@ -111,7 +120,8 @@ export function profileOutput(
   const add = (d: EvidenceDraft) => (evidence.push(d), d.id!);
   const where = [property.address.street, property.address.city].filter(Boolean).join(", ");
 
-  add({ id: `ev_p${pid}_type`, kind: "verified_fact", statement: `${where} is a ${property.propertyType}${property.propertySubtype ? ` (${property.propertySubtype})` : ""} building in CoStar`, value: property.propertyType, sources: costar(P, pid, "propertyType") });
+  const subtype = property.propertySubtype?.replace(new RegExp(`^${property.propertyType}_?`), "");
+  add({ id: `ev_p${pid}_type`, kind: "verified_fact", statement: `${where} is a ${humanize(property.propertyType)}${subtype ? ` (${humanize(subtype)})` : ""} building in CoStar`, value: property.propertyType, sources: costar(P, pid, "propertyType") });
   if (property.rentableAreaSf) add({ id: `ev_p${pid}_rba`, kind: "verified_fact", statement: `Building rentable area is ${fmt(property.rentableAreaSf)} SF`, value: property.rentableAreaSf, unit: "SF", sources: costar(P, pid, "rentableBuildingArea") });
   if (property.yearBuilt) add({ id: `ev_p${pid}_built`, kind: "verified_fact", statement: `Built in ${property.yearBuilt}${property.yearRenovated ? `, renovated ${property.yearRenovated}` : ""}`, value: property.yearBuilt, sources: costar(P, pid, "yearBuilt") });
   if (property.zoningDescription) add({ id: `ev_p${pid}_zoning`, kind: "verified_fact", statement: `CoStar's zoning field reads "${property.zoningDescription}" (a record, not a permitted-use determination)`, value: property.zoningDescription, sources: costar(P, pid, "zoningDescription") });
@@ -129,6 +139,28 @@ export function profileOutput(
     propFacts.parkingPer1000Sf = { value: property.parkingRatioPer1000Sf, evidenceId: add({ id: `ev_p${pid}_parking`, kind: "verified_fact", statement: `Parking ratio is ${fmt(property.parkingRatioPer1000Sf)} per 1,000 SF`, value: property.parkingRatioPer1000Sf, sources: costar(P, pid, "parkingRatio") }) };
   } else {
     add({ id: `ev_p${pid}_parking_missing`, kind: "missing", statement: "Parking is not recorded for this property", whyNeeded: "Gyms, clinics and some restaurants depend on customer parking.", howToResolve: "Ask the listing broker about on-site and nearby parking." });
+  }
+  /* sale listing (acquisition): the listing's own figures, never an estimated value */
+  const sale = saleListings.find((l) => !UNAVAILABLE_SALE.includes(l.saleStatus ?? "")) ?? saleListings[0];
+  if (sale) {
+    const L = (field: string) => [{ ...sale.source, field: `forSaleSummary.${field}` }];
+    const status = sale.saleStatus ? ` (${humanize(sale.saleStatus)}${sale.saleType ? `, ${humanize(sale.saleType)}` : ""})` : "";
+    if (sale.askingPriceLowUsd !== null) {
+      const range = sale.askingPriceHighUsd && sale.askingPriceHighUsd !== sale.askingPriceLowUsd ? `–$${fmt(sale.askingPriceHighUsd)}` : "";
+      add({ id: `ev_p${pid}_sale_price`, kind: "verified_fact", statement: `Listed for sale at an asking price of $${fmt(sale.askingPriceLowUsd)}${range}${status}${sale.availableSf ? ` for ${fmt(sale.availableSf)} SF` : ""} (an asking price, not a valuation)`, value: sale.askingPriceLowUsd, unit: "USD", sources: L("askingPriceLow") });
+    } else {
+      add({ id: `ev_p${pid}_sale_price_missing`, kind: "missing", statement: `Listed for sale${status}, but the listing does not disclose an asking price`, whyNeeded: "An acquisition scenario needs a real price; Tesseract never estimates a property value.", howToResolve: "Ask the listing broker for the asking price and the offering memorandum." });
+    }
+    // For an acquisition the "space" is what the listing sells, so its SF drives the size fit.
+    if (sale.availableSf) {
+      propFacts.spaceSf = { value: sale.availableSf, evidenceId: add({ id: `ev_p${pid}_sale_sf`, kind: "verified_fact", statement: `The sale listing offers ${fmt(sale.availableSf)} SF`, value: sale.availableSf, unit: "SF", sources: L("totalAvailableSquareFeet") }) };
+    }
+    if (sale.askingCapRatePct !== null) {
+      propFacts.askingCapRatePct = { value: sale.askingCapRatePct, evidenceId: add({ id: `ev_p${pid}_sale_cap`, kind: "verified_fact", statement: `The listing states an asking cap rate of ${sale.askingCapRatePct}% (the seller's figure, not an underwritten return)`, value: sale.askingCapRatePct, unit: "%", sources: L("capitalizationRate") }) };
+    }
+    if (sale.netOperatingIncomeUsd !== null) {
+      add({ id: `ev_p${pid}_sale_noi`, kind: "verified_fact", statement: `The listing states net operating income of $${fmt(sale.netOperatingIncomeUsd)}/yr (as stated by the seller)`, value: sale.netOperatingIncomeUsd, unit: "USD/yr", sources: L("netOperatingIncome") });
+    }
   }
   facts[prop] = propFacts;
 
@@ -179,13 +211,15 @@ export function profileOutput(
   if (Object.keys(byUse).length) market[prop] = { byUse };
 
   return {
-    summary: `${where}: ${property.propertyType}, ${spaces.length} advertised space${spaces.length === 1 ? "" : "s"}, ${tenants.length} tenant${tenants.length === 1 ? "" : "s"}`,
+    summary: `${where}: ${humanize(property.propertyType)}, ${spaces.length} advertised space${spaces.length === 1 ? "" : "s"}, ${tenants.length} tenant${tenants.length === 1 ? "" : "s"}`,
     evidence,
     facts,
     market,
     data: {
       propertyId: pid,
+      subject: prop,
       matterportModelIds: property.matterportModelIds,
+      forSale: sale ? { askingPriceUsd: sale.askingPriceLowUsd, askingCapRatePct: sale.askingCapRatePct, netOperatingIncomeUsd: sale.netOperatingIncomeUsd, availableSf: sale.availableSf, status: sale.saleStatus } : null,
       spaces: spaces.slice(0, MAX_SPACES_PER_PROFILE).map((s) => ({
         spaceId: s.id,
         subject: subjectKey(pid, s.id),
@@ -244,7 +278,31 @@ export function liveDataDeps(m: DataModules, opts: LiveDepsOptions): DataDeps {
   );
 
   return {
-    async searchProperties({ query, market, hasAvailableSpace, limit }) {
+    async searchProperties({ query, market, hasAvailableSpace, forSale, maxAskingPriceUsd, limit }) {
+      if (forSale) {
+        const s = await m.searchSaleListings({ market: market as SaleListingQuery["market"], maxAskingPriceUsd, limit: limit ?? 10 });
+        return {
+          summary: `${s.total} commercial listing${s.total === 1 ? "" : "s"} for sale${maxAskingPriceUsd ? ` at or under $${fmt(maxAskingPriceUsd)}` : ""}; showing ${s.items.length}`,
+          evidence: s.items.map((l) => ({
+            id: `ev_sale_${l.listingId}`,
+            kind: "verified_fact" as const,
+            statement: `${[l.street, l.city].filter(Boolean).join(", ")} (${humanize(l.propertyType)}) is listed for sale${l.askingPriceLowUsd !== null ? ` at $${fmt(l.askingPriceLowUsd)}` : " with no disclosed price"}${l.askingCapRatePct !== null ? `, asking cap rate ${l.askingCapRatePct}%` : ""}${l.availableSf ? `, ${fmt(l.availableSf)} SF` : ""} (asking figures, not a valuation)`,
+            value: l.askingPriceLowUsd,
+            sources: [l.source],
+          })),
+          data: s.items.map((l) => ({
+            propertyId: l.propertyId,
+            subject: subjectKey(l.propertyId),
+            street: l.street,
+            type: l.propertyType,
+            askingPriceUsd: l.askingPriceLowUsd,
+            askingCapRatePct: l.askingCapRatePct,
+            netOperatingIncomeUsd: l.netOperatingIncomeUsd,
+            availableSf: l.availableSf,
+            status: l.saleStatus,
+          })),
+        };
+      }
       const r = await m.searchProperties({ q: query, market: market as PropertySearchQuery["market"], hasAvailableSpace, includeMultifamily: false, limit: limit ?? 10, offset: 0 });
       return {
         summary: `${r.total} commercial propert${r.total === 1 ? "y" : "ies"} match; showing ${r.items.length}`,
@@ -317,8 +375,8 @@ export function liveDataDeps(m: DataModules, opts: LiveDepsOptions): DataDeps {
 
     async getPropertyProfile({ propertyId, spaceId }) {
       const property = await loadProperty(propertyId);
-      const [spaces, tenants] = await Promise.all([m.getSpaces(propertyId), m.getCurrentTenants(propertyId)]);
-      return profileOutput(property, spaces, tenants, spaceId);
+      const [spaces, tenants, sale] = await Promise.all([m.getSpaces(propertyId), m.getCurrentTenants(propertyId), m.getSaleListings(propertyId)]);
+      return profileOutput(property, spaces, tenants, spaceId, sale);
     },
 
     getNearbyContext: nearbyContextDep({

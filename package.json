@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run lint && npm run typecheck && npm run test",
-    "db:build": "tsx scripts/build-db.ts"
+    "db:build": "tsx scripts/build-db.ts",
+    "demo:check": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs --tsconfig scripts/tsconfig.verify.json scripts/demo-check.ts",
+    "concepts:generate": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs --tsconfig scripts/tsconfig.verify.json scripts/generate-concepts.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",

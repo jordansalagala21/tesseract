@@ -10,6 +10,7 @@ import { agentEnv } from "@/lib/config/env";
 import { getMatterportModel, getModelImages } from "@/lib/data/matterport";
 import { getNearbyContext } from "@/lib/data/nearby";
 import { getProperty, getSpaces, searchProperties } from "@/lib/data/properties";
+import { getSaleListings, searchSaleListings } from "@/lib/data/sale-listings";
 import { getCurrentTenants } from "@/lib/data/tenants";
 import { fetchVexcelImage, getAerialImagery } from "@/lib/data/vexcel";
 import { liveDataDeps, type DataModules } from "./data-deps";
@@ -23,6 +24,8 @@ export const DATA_MODULES: DataModules = {
   getProperty,
   getSpaces,
   getCurrentTenants,
+  searchSaleListings,
+  getSaleListings,
   getNearbyContext,
   getMatterportModel,
   getModelImages,

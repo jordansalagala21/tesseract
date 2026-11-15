@@ -226,13 +226,9 @@
 }
 
 /* Character: the app reads like a set of drawings.
-   - Drafting-paper dots behind every page (cards and the header sit on top as solid surfaces).
+   - Plain page background (the drafting-dot grid was removed: it read as a whiteboard).
    - Section headings use the wide signage face, like sheet titles.
    - A dimension line (a rule with end ticks) closes each page title block. */
-body {
-  background-image: radial-gradient(var(--plan-grid) 1px, transparent 1.3px);
-  background-size: 24px 24px;
-}
 
 h2 {
   font-family: var(--font-display);
@@ -256,3 +252,65 @@ h2 {
 }
 .dimension-line::before { left: 0; }
 .dimension-line::after { right: 0; }
+
+/* Guided questions (components/forms/GuidedInvest.tsx): the guide pops in, bubbles rise, and
+   three dots "type" before each question. All of it is skipped when reduced motion is on. */
+@keyframes tess-pop {
+  0% { transform: scale(0.6) translateY(6px); opacity: 0; }
+  60% { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes tess-rise {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes tess-dot {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+@keyframes tess-wave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(14deg); }
+  75% { transform: rotate(-8deg); }
+}
+.animate-tess-pop { animation: tess-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.25) both; }
+.animate-tess-rise { animation: tess-rise 0.35s ease-out both; }
+.animate-tess-dot { animation: tess-dot 1s ease-in-out infinite; }
+.animate-tess-wave { animation: tess-wave 1.2s ease-in-out 0.4s 2; transform-origin: 70% 80%; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-tess-pop, .animate-tess-rise, .animate-tess-dot, .animate-tess-wave { animation: none; }
+}
+
+/* Investor stage (components/forms/StageInvest.tsx): Tess slides in from the left side with a
+   bounce, waves, then bobs and blinks while she waits. Off with reduced motion. */
+@keyframes stage-enter {
+  0% { transform: translateX(-110vw) rotate(-10deg); }
+  65% { transform: translateX(18px) rotate(3deg); }
+  82% { transform: translateX(-8px) rotate(-1deg); }
+  100% { transform: none; }
+}
+@keyframes stage-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+@keyframes stage-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+@keyframes stage-wave {
+  0%, 100% { transform: rotate(0deg); }
+  20%, 60% { transform: rotate(-28deg); }
+  40%, 80% { transform: rotate(6deg); }
+}
+@keyframes stage-hop {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-14px); }
+}
+.animate-stage-enter { animation: stage-enter 0.95s cubic-bezier(0.2, 0.8, 0.25, 1) both; }
+.animate-stage-bob { animation: stage-bob 3.2s ease-in-out 1s infinite; }
+.animate-stage-blink { animation: stage-blink 4.5s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.animate-stage-wave { animation: stage-wave 1.4s ease-in-out 0.95s 1; transform-box: fill-box; transform-origin: 15% 90%; }
+.animate-stage-hop { animation: stage-hop 0.45s ease-out 1; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-stage-enter, .animate-stage-bob, .animate-stage-blink, .animate-stage-wave, .animate-stage-hop { animation: none; }
+}

@@ -35,6 +35,8 @@ export interface SiteFacts {
   buildOut?: Fact<BuildOutTag>[];
   askingRentPsfYear?: Fact<number>;
   serviceType?: Fact<string>;
+  /** The sale listing's own asking cap rate, in percent (acquisition only). */
+  askingCapRatePct?: Fact<number>;
 }
 
 /** Market context from the kit (AI-04). Counts cover kit buildings only, not a census. */
@@ -53,6 +55,8 @@ export interface MarketSignals {
 
 export interface UserPreferences {
   maxRentPsfYear?: Fact<number>;
+  /** The investor's target annual return, in percent (a user assumption, not a promise). */
+  targetReturnPct?: Fact<number>;
 }
 
 export interface Weights {
@@ -255,8 +259,22 @@ function market(req: UseRequirements, signals: MarketSignals | undefined, blocke
 
 function economic(site: SiteFacts, signals: MarketSignals | undefined, prefs: UserPreferences | undefined): ScoreComponent {
   const f: Factor[] = [];
+
+  // Acquisition: the listing's asking cap rate against the investor's own target. Both are
+  // stated figures (the seller's and the user's), so the label says neither is underwritten.
+  if (site.askingCapRatePct && prefs?.targetReturnPct) {
+    const cap = site.askingCapRatePct.value;
+    const target = prefs.targetReturnPct.value;
+    const score = cap >= target ? 90 : cap >= target - 1 ? 60 : 30;
+    f.push({
+      label: `Asking cap rate ${cap}% vs your ${target}% target (the seller's figure, not an underwritten return)`,
+      score,
+      evidenceIds: [site.askingCapRatePct.evidenceId, prefs.targetReturnPct.evidenceId],
+    });
+  }
+
   const rent = site.askingRentPsfYear;
-  if (!rent) return component([], "no asking rent is published for this space.");
+  if (!rent) return component(f, "no asking rent is published for this space, and no asking cap rate with a target return.");
 
   if (prefs?.maxRentPsfYear) {
     const ratio = rent.value / prefs.maxRentPsfYear.value;

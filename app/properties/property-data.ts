@@ -4,6 +4,7 @@
 // sample data that could be mistaken for live output (CLAUDE.md §6.8).
 import "server-only";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { z } from "zod";
 import { PropertyDetailResponse, PropertySearchResponse, PropertySpacesResponse, type Market } from "@/lib/contracts";
 
@@ -19,6 +20,9 @@ export type Loaded<T> = { ok: true; data: T } | Unavailable;
 const ORIGIN = `http://127.0.0.1:${process.env.PORT ?? 3000}`;
 
 async function getJson<S extends z.ZodType>(path: string, schema: S): Promise<Loaded<z.infer<S>>> {
+  // Property data is per request (live listings, signed imagery). Without this, Next 16's
+  // prerender check reaches fetch(), which reads the clock, and logs "unstable value Date.now()".
+  await connection();
   let res: Response;
   try {
     res = await fetch(ORIGIN + path, { cache: "no-store" });

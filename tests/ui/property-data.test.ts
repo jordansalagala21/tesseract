@@ -7,6 +7,9 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
+// The loader calls connection() so Next renders it per request; outside a request it would throw.
+vi.mock("next/server", () => ({ connection: async () => {} }));
+
 const { getPropertyPage, searchProperties } = await import("@/app/properties/property-data");
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });

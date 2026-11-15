@@ -56,7 +56,7 @@ export const PropertyRef = z.object({ propertyId: z.number().int(), spaceId: z.n
 
 export interface DataDeps {
   searchProperties(input: { query?: string; market?: string; hasAvailableSpace?: boolean; limit?: number }): Promise<ToolOutput>;
-  searchAvailableSpaces(input: { market?: string; sfMin?: number; sfMax?: number; maxRentPsfYear?: number; limit?: number }): Promise<ToolOutput>;
+  searchAvailableSpaces(input: { market?: string; sfMin?: number; sfMax?: number; maxRentPsfYear?: number; spaceUses?: string[]; limit?: number }): Promise<ToolOutput>;
   getPropertyProfile(input: { propertyId: number; spaceId?: number }): Promise<ToolOutput>;
   getNearbyContext(input: { propertyId: number; spaceId?: number; radiusMeters?: number; useCategories?: UseCategory[] }): Promise<ToolOutput>;
   getMatterportModel(input: { propertyId: number; spaceId?: number }): Promise<ToolOutput>;
@@ -115,6 +115,10 @@ export const TOOL_INPUTS = {
     sfMin: z.number().positive().optional(),
     sfMax: z.number().positive().optional(),
     maxRentPsfYear: z.number().positive().optional(),
+    spaceUses: z
+      .array(z.enum(["Retail", "Office", "OfficeRetail", "Medical", "OfficeMedical", "Flex", "Industrial"]))
+      .optional()
+      .describe("CoStar space uses to include, e.g. [\"Retail\"] for a café or shop. Omit for any use."),
     limit: z.number().int().min(1).max(20).optional(),
   }),
   get_property_profile: PropertyRef.extend({ reason }),
@@ -224,10 +228,16 @@ function absorb(state: AgentState, out: ToolOutput): ToolResult {
     state.facts[subject] = { ...state.facts[subject], ...remapObj(facts) };
   }
   for (const [subject, ctx] of Object.entries(out.market ?? {})) {
-    const byUse = Object.fromEntries(Object.entries(ctx.byUse ?? {}).map(([u, s]) => [u, remapObj(s)]));
+    // Merge per use, signal by signal: the profile's "same category in the building" and the
+    // nearby tool's industry counts are different signals for the same use and must both survive.
+    const prev = state.market[subject]?.byUse ?? {};
+    const byUse = { ...prev };
+    for (const [u, sig] of Object.entries(ctx.byUse ?? {}) as [UseCategory, Omit<MarketSignals, "comparableRent">][]) {
+      byUse[u] = { ...prev[u], ...remapObj(sig) };
+    }
     state.market[subject] = {
       comparableRent: ctx.comparableRent ? remap(ctx.comparableRent) : state.market[subject]?.comparableRent,
-      byUse: { ...state.market[subject]?.byUse, ...byUse },
+      byUse,
     };
   }
   if (out.marketAnalysis) {

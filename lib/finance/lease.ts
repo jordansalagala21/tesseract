@@ -64,7 +64,10 @@ export function leaseScenario(input: LeaseInput, meta: { id: string; name: strin
     c.note("Payback needs expected monthly revenue, which was not given.");
   } else if (monthlyOccupancy !== null && buildOut !== null) {
     const monthlyProfit = input.monthlyRevenueUsd.value - monthlyOccupancy - otherOpex;
-    if (monthlyProfit <= 0) {
+    if (buildOut === 0) {
+      // "0 years" would read as an instant payback; there is simply nothing to pay back.
+      c.note("No build-out cost was entered, so there is nothing to pay back.");
+    } else if (monthlyProfit <= 0) {
       c.note("At this revenue the space does not cover its costs, so the build-out never pays back.");
     } else {
       output.paybackYears = years(buildOut / (12 * monthlyProfit));

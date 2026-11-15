@@ -212,7 +212,7 @@ export function analyzeNearby(nearby: NearbyContext, opts: AnalyzeOptions = {}):
         const { n, evidenceId } = industryFact(
           "complement",
           req.complementIndustries,
-          (count) => `${count} nearby tenants are in industries whose staff or visitors are likely customers (${req.complementIndustries.length} CoStar industry groups, kit buildings only)`,
+          (count) => `${count} nearby tenants are in industries whose staff or visitors are likely customers of a ${req.label.toLowerCase()} (${req.complementIndustries.length} CoStar industry groups, kit buildings only)`,
         );
         s.complementaryNearby = { value: n, evidenceId };
       }

@@ -1,4 +1,5 @@
-import { Check, Circle, Loader2, Minus, X } from "lucide-react";
+import { Check, Circle, ListChecks, Loader2, Minus, X } from "lucide-react";
+import { EmptyState } from "@/components/ui/states";
 import type { AgentToolCall, AnalysisResponse, Evidence } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
 import { EvidenceChip } from "./EvidenceChip";
@@ -10,7 +11,7 @@ const STATUS: Record<Status, { label: string; Icon: typeof Check; tone: string }
   pending: { label: "Waiting", Icon: Circle, tone: "border-border text-muted-foreground" },
   running: { label: "Running", Icon: Loader2, tone: "border-primary text-primary" },
   succeeded: { label: "Done", Icon: Check, tone: "border-primary bg-primary text-primary-foreground" },
-  failed: { label: "Failed", Icon: X, tone: "border-destructive bg-destructive text-white" },
+  failed: { label: "Failed", Icon: X, tone: "border-destructive bg-destructive text-destructive-foreground" },
   skipped: { label: "Skipped", Icon: Minus, tone: "border-border bg-muted text-muted-foreground" },
 };
 
@@ -45,21 +46,21 @@ export function AgentTimeline({
   return (
     <section aria-labelledby="timeline-heading">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
-        <h2 id="timeline-heading" className="text-[20px] font-semibold tracking-tight">
+        <h2 id="timeline-heading" className="text-xl font-semibold tracking-tight">
           How the agent investigated
         </h2>
-        <p aria-live="polite" className="flex items-center gap-1.5 text-[15px] text-muted-foreground tabular-nums">
+        <p aria-live="polite" className="flex items-center gap-1.5 text-base text-muted-foreground tabular-nums">
           {live && <Loader2 className="size-4 motion-safe:animate-spin" aria-hidden="true" />}
           {RUN_STATUS[status]}, {done} of {calls.length} {calls.length === 1 ? "step" : "steps"} done
         </p>
       </div>
 
       {calls.length === 0 ? (
-        <p className="rounded-[20px] border bg-card px-5 py-6 text-[15px] text-muted-foreground">
+        <EmptyState title="No steps yet" icon={ListChecks}>
           {live ? "The agent is planning its first step." : "The agent didn’t run any tools for this analysis."}
-        </p>
+        </EmptyState>
       ) : (
-        <ol className="rounded-[20px] border bg-card px-4 py-2 sm:px-5">
+        <ol className="rounded-2xl border bg-card px-4 py-2 sm:px-5">
           {calls.map((call, i) => {
             const s = STATUS[call.status];
             const duration = formatDuration(call);
@@ -79,25 +80,25 @@ export function AgentTimeline({
                 </span>
                 <div className="min-w-0 flex-1 pt-0.5">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-4">
-                    <p className="text-[17px] leading-snug font-semibold">
-                      <span className="mr-2 text-[13px] font-medium text-muted-foreground tabular-nums">Step {call.step}</span>
+                    <p className="text-lg leading-snug font-semibold">
+                      <span className="mr-2 text-sm font-medium text-muted-foreground tabular-nums">Step {call.step}</span>
                       {toolLabel(call.tool)}
                     </p>
-                    <span className="text-[13px] text-muted-foreground tabular-nums">
+                    <span className="text-sm text-muted-foreground tabular-nums">
                       {call.status === "running" ? "Running…" : call.status === "succeeded" ? duration : s.label}
                     </span>
                   </div>
-                  <p className="mt-1 text-[15px] leading-snug text-muted-foreground">{call.reason}</p>
-                  {call.outputSummary && <p className="mt-1.5 text-[15px] leading-snug">{call.outputSummary}</p>}
+                  <p className="mt-1 text-base leading-snug text-muted-foreground">{call.reason}</p>
+                  {call.outputSummary && <p className="mt-1.5 text-base leading-snug">{call.outputSummary}</p>}
                   {call.error && (
-                    <p className="mt-1.5 text-[15px] leading-snug text-destructive">
+                    <p className="mt-1.5 text-base leading-snug text-destructive">
                       <span className="font-semibold">Error:</span> {call.error}
                     </p>
                   )}
                   {call.evidenceIds.length > 0 && (
-                    <ul aria-label="Evidence from this step" className="mt-2.5 flex flex-wrap gap-1.5">
+                    <ul aria-label="Evidence from this step" className="-mx-2.5 mt-2 grid gap-0.5 md:grid-cols-2">
                       {call.evidenceIds.map((id) => (
-                        <li key={id} className="max-w-full">
+                        <li key={id} className="min-w-0">
                           <EvidenceChip id={id} evidence={byId.get(id)} onSelect={onEvidenceSelect} />
                         </li>
                       ))}

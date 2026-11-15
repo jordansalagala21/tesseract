@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ScrollText } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { AnalysisResponse } from "@/lib/contracts";
 import { AgentTimeline } from "./AgentTimeline";
 import { EvidenceDrawer } from "./EvidenceDrawer";
@@ -26,18 +27,17 @@ export function AnalysisResults({ analysis, showTimeline = true }: { analysis: A
       {showTimeline && (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[15px] text-muted-foreground">Tap any evidence chip to see its source.</p>
-            <button
-              type="button"
+            <p className="text-base text-muted-foreground">Tap any evidence chip to see its source.</p>
+            <Button
+              variant="outline"
               onClick={() => {
                 setSelectedId(null);
                 setOpen(true);
               }}
-              className="inline-flex h-11 items-center gap-2 rounded-xl border bg-card px-4 text-[15px] font-medium outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
             >
               <ScrollText className="size-4" aria-hidden="true" />
               Open Evidence Trail ({analysis.evidence.length})
-            </button>
+            </Button>
           </div>
           <AgentTimeline toolCalls={analysis.toolCalls} evidence={analysis.evidence} status={analysis.status} onEvidenceSelect={select} />
         </>

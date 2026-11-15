@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Building2, FileCheck2, KeyRound, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { GuidedInvest } from "./GuidedInvest";
 import { InvestorForm, type InvestorDefaults } from "./InvestorForm";
 
 /** Example setups that work well with the CoStar data (Houston and Los Angeles). */
@@ -41,13 +42,14 @@ const OUTPUTS = [
  */
 export function InvestPlanner() {
   const [example, setExample] = useState<string | null>(null);
+  const [mode, setMode] = useState<"guided" | "form">("guided");
   const chosen = EXAMPLES.find((e) => e.id === example);
 
   return (
     <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] lg:gap-10">
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-semibold">Start from an example</p>
+          <p className="text-sm font-semibold">{mode === "guided" ? "Answer Tess’s questions below, or start from an example" : "Start from an example"}</p>
           <div role="group" aria-label="Example investor setups" className="grid gap-2 sm:grid-cols-3">
             {EXAMPLES.map((e) => (
               <button
@@ -66,8 +68,17 @@ export function InvestPlanner() {
             ))}
           </div>
         </div>
-        {/* key: picking an example remounts the form with its values; everything stays editable. */}
-        <InvestorForm key={example ?? "blank"} defaults={chosen?.values} />
+        {/* key: picking an example remounts with its values; everything stays editable. */}
+        {mode === "guided" ? (
+          <GuidedInvest key={example ?? "blank"} preset={chosen?.values} onUseForm={() => setMode("form")} />
+        ) : (
+          <>
+            <InvestorForm key={example ?? "blank"} defaults={chosen?.values} />
+            <button type="button" onClick={() => setMode("guided")} className="min-h-11 self-start text-sm font-medium text-primary underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring">
+              Prefer a conversation? Answer one question at a time
+            </button>
+          </>
+        )}
       </div>
 
       <aside aria-labelledby="get-heading" className="flex flex-col gap-5 rounded-2xl border bg-card p-5 sm:p-6 lg:sticky lg:top-6">

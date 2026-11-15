@@ -14,6 +14,9 @@ const ServerEnv = z.object({
   ANTHROPIC_API_KEY: z.string().min(1),
   ANTHROPIC_MODEL_ORCHESTRATOR: z.string().default("claude-opus-5-5"),
   ANTHROPIC_MODEL_FAST: z.string().default("claude-haiku-5-5"),
+  /** Optional: only `npm run concepts:generate` uses it (offline concept images). */
+  OPENAI_API_KEY: z.string().min(1).optional(),
+  OPENAI_IMAGE_MODEL: z.string().default("gpt-image-2"),
 });
 export type ServerEnv = z.infer<typeof ServerEnv>;
 
@@ -70,5 +73,15 @@ export function vexcelEnv(): VexcelEnv {
   if (!parsed.success) {
     throw new Error("VEXCEL_API_KEY is not set. Add it to .env.local (see .env.example).");
   }
+  return parsed.data;
+}
+
+/** Concept-image generation (scripts/generate-concepts.ts). Never used by the running app. */
+const ImageGenEnv = z.object({ OPENAI_API_KEY: z.string().min(1), OPENAI_IMAGE_MODEL: z.string().default("gpt-image-2") });
+export type ImageGenEnv = z.infer<typeof ImageGenEnv>;
+
+export function imageGenEnv(): ImageGenEnv {
+  const parsed = ImageGenEnv.safeParse(process.env);
+  if (!parsed.success) throw new Error("OPENAI_API_KEY is not set. Add it to .env.local (see .env.example).");
   return parsed.data;
 }

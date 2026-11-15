@@ -1,7 +1,7 @@
 // Which picture goes with which part of the results (visual results page).
 // Every image is served by our own routes: scan photos via /api/imagery/matterport/<model>/<asset>
 // (signed Matterport URLs never reach the browser) and aerials via /api/imagery/vexcel/...
-import type { Evidence, Opportunity, SourceRef } from "@/lib/contracts";
+import type { AnalysisResponse, Evidence, Opportunity, SourceRef } from "@/lib/contracts";
 
 export type ResultImage = { src: string; alt: string; kind: "scan" | "aerial"; evidenceId: string };
 
@@ -68,4 +68,27 @@ export function reasonsFor(o: Opportunity, byId: Map<string, Evidence>): Evidenc
   const facts = cited.filter((e) => e.kind === "verified_fact").sort((a, b) => a.statement.length - b.statement.length);
   // One thing the AI saw first (it makes each idea specific), then CoStar facts, then more seen.
   return [...seen.slice(0, 1), ...facts, ...seen.slice(1)].slice(0, 3);
+}
+
+/**
+ * The current interior of an idea's space: photos from the interior scan the agent ran on that
+ * property (and suite), plus the scan's model id for "Open 3D tour". Ideas on different
+ * properties (business starters, investors) each get their own space.
+ */
+export function spaceImagesFor(o: Opportunity, a: AnalysisResponse): { images: ResultImage[]; modelId: string | null } {
+  const byId = new Map(a.evidence.map((e) => [e.id, e]));
+  const matches = (input: Record<string, unknown>) => input.propertyId === o.propertyId && (!o.spaceId || !input.spaceId || input.spaceId === o.spaceId);
+  const ids = (tool: AnalysisResponse["toolCalls"][number]["tool"]) => a.toolCalls.filter((c) => c.tool === tool && c.status === "succeeded" && matches(c.input)).flatMap((c) => c.evidenceIds);
+
+  const scans = ids("analyze_interior")
+    .map((id) => byId.get(id))
+    .filter((e): e is Evidence => !!e && !e.id.includes("_none_"))
+    .flatMap((e) => imagesFor(e).filter((i) => i.kind === "scan"));
+  const images = [...new Map(scans.map((i) => [i.src, i])).values()];
+
+  const fromPhotos = /\/api\/imagery\/matterport\/([A-Za-z0-9]+)\//.exec(images[0]?.src ?? "")?.[1];
+  const fromModel = ids("get_matterport_model")
+    .flatMap((id) => byId.get(id)?.media ?? [])
+    .find((m) => m.type === "matterport_model")?.ref;
+  return { images, modelId: fromPhotos ?? fromModel ?? null };
 }

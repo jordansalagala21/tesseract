@@ -7,8 +7,8 @@ import { apiError } from "@/lib/http";
 
 const MODEL_ID = /^[A-Za-z0-9]{11}$/;
 const ASSET = /^(photos|floorplans)-(\d{1,3})$/;
-/** Signed URLs live about an hour; keep the list well inside that, on the server only. */
-const LIST_TTL_MS = 45 * 60 * 1000;
+/** Signed URLs are short-lived; keep the list well inside that, on the server only. */
+const LIST_TTL_MS = 20 * 60 * 1000;
 const lists = new Map<string, { images: ModelImage[]; expiresAt: number }>();
 
 async function assetsFor(modelId: string): Promise<ModelImage[]> {
@@ -30,8 +30,8 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/imagery/mat
     if (!image) return apiError(404, "not_found", `Scan ${modelId} has no ${m[1].slice(0, -1)} ${m[2]}.`);
 
     let upstream = await fetch(image.url, { cache: "no-store" });
-    if (upstream.status === 403 || upstream.status === 401) {
-      // The signed URL expired early: refresh the list once.
+    if (!upstream.ok) {
+      // The signed URL expired (Matterport doesn't always say so with 401/403): refresh once.
       lists.delete(modelId);
       const fresh = (await assetsFor(modelId)).find((i) => i.source.field === field);
       if (fresh) upstream = await fetch(fresh.url, { cache: "no-store" });

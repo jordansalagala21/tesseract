@@ -24,6 +24,8 @@ const modules: DataModules = {
   getProperty: async (id) => (id === PID ? travisProperty : null),
   getSpaces: async () => travisSpaces,
   getCurrentTenants: async () => [{ name: "F45 Training, Inc.", industry: null, suite: "103", squareFeet: null, since: null }],
+  searchSaleListings: async () => ({ items: [], total: 0 }),
+  getSaleListings: async () => [],
   getNearbyContext: async () => TRAVIS_1000,
   getMatterportModel: async (_id, link) => ({ ...travisSuite100Model, costarCaption: link.caption ?? null, matchedSuite: link.matchedSuite ?? null }),
   getModelImages: async () => [],
@@ -138,6 +140,8 @@ describe("auditAnalysis catches each rule", () => {
   it("vacancy wording, but not the 'not confirmed vacancy' disclaimer", async () => {
     expect(await rules((r) => { r.opportunities[0].summary = "The vacant suite is ready."; })).toContain("vacancy_wording");
     expect(await rules(() => {})).not.toContain("vacancy_wording");
+    // "vacancy" as a finance term is fine.
+    expect(await rules((r) => { r.opportunities[0].unknowns.push("Operating expenses, vacancy and capex figures"); })).not.toContain("vacancy_wording");
   });
   it("opportunity without a verified fact", async () => {
     expect(await rules((r) => { r.opportunities[0].supportingEvidenceIds = ["ev_int_bar"]; })).toContain("opportunity_without_fact");

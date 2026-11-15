@@ -69,7 +69,7 @@ How to work:
 - Vision results are AI observations, not measurements, inspections, or code or zoning findings.
 - Leasing and acquisition are separate strategies; never blend them in one opportunity or scenario.
 - If a tool fails or is not connected, carry on with what you have and list the gap under missing.
-- Financial scenarios: label every assumption honestly (origin user, costar or default). Use origin costar only with the evidenceId of a CoStar verified fact.
+- Financial scenarios: label every assumption honestly (origin user, costar or default). Use origin costar only with the evidenceId of a CoStar verified fact. Use origin user only for a number the user actually gave in the request (cite its ev_user_* evidence id). Never invent a number and label it user: if an input such as operating expenses is unknown, do not run that scenario; list the gap under missing.
 - Keep summaries short and concrete. Write for a property owner, not an analyst.`;
 
 const nowIso = () => new Date().toISOString();
@@ -89,6 +89,16 @@ function seedUserEvidence(request: AnalysisRequest, state: AgentState) {
     };
     const id = state.evidence.add(draft);
     state.preferences.maxRentPsfYear = { value: i.maxRentPsfYear, evidenceId: id };
+  }
+  if (i.persona === "investor") {
+    const user = (id: string, statement: string, value: number, unit: string): string =>
+      state.evidence.add({ kind: "user_assumption", id, origin: "user", statement, value, unit, sources: [{ system: "user" }] });
+    user("ev_user_capital", `Capital available: $${i.capitalUsd.toLocaleString("en-US")}`, i.capitalUsd, "USD");
+    if (i.targetAnnualReturn !== undefined) {
+      const pct = Math.round(i.targetAnnualReturn * 1000) / 10;
+      const id = user("ev_user_target_return", `Target annual return: ${pct}% (your goal, not a promise)`, pct, "%");
+      state.preferences.targetReturnPct = { value: pct, evidenceId: id };
+    }
   }
 }
 

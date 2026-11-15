@@ -86,8 +86,11 @@ export function personaPrompt(request: AnalysisRequest): string {
         `Persona: investor. Capital $${i.capitalUsd.toLocaleString("en-US")}, ${i.riskTolerance} risk tolerance, ${i.horizonYears}-year horizon, markets: ${i.markets.join(", ")}. Preference: ${i.strategy}.`,
         i.targetAnnualReturn !== undefined && `User's target annual return: ${(i.targetAnnualReturn * 100).toFixed(1)}% (a user assumption, not a promise).`,
         i.goals.length > 0 && `Goals: ${i.goals.join("; ")}.`,
-        "Strategy: search_properties (and search_available_spaces for leasing) in the markets → get_property_profile and get_nearby_context for the most promising candidates → score_uses per candidate → run_financial_scenario: acquisition scenarios only with a CoStar asking price or a user figure, lease scenarios separately → submit_report.",
-        "Emphasis: economics and risks first. Acquisition and lease/reposition are separate opportunities with separate scenarios; never blend them. If no asking price exists, say so instead of estimating a value.",
+        allowedStrategies(i).includes("acquisition") &&
+          "Acquisition: search_properties with forSale: true (optionally maxAskingPriceUsd) finds buildings listed for sale, with asking price, asking cap rate and NOI when the listing states them. Score an acquisition on the PROPERTY subject (p<propertyId>) after get_property_profile on that property (it adds the listing's price and cap rate as facts). Prefer listings that disclose a price, and among those the ones that state an asking cap rate: only they can be scored on economics against the investor's target return.",
+        allowedStrategies(i).some((s) => s !== "acquisition") && "Leasing: search_available_spaces finds advertised spaces; score a lease on the SPACE subject (p<propertyId>-s<spaceId>).",
+        "Strategy: find candidates → get_property_profile and get_nearby_context for the most promising (at least one acquisition and one lease candidate when the preference is either) → score_uses per candidate → run_financial_scenario only when every input is a CoStar fact, a user figure or a labelled default → submit_report.",
+        "Emphasis: economics and risks first. Acquisition and lease/reposition are separate opportunities with separate scenarios; never blend them. Never estimate a property value: if a listing does not disclose a price, say so. Your capital (ev_user_capital) and target return (ev_user_target_return) are user figures you may cite.",
       );
       break;
     case "entrepreneur":

@@ -256,3 +256,25 @@ describe("owners: overall without economics (economicOptional)", () => {
     expect(scoreUse({ ...withBudget, economicOptional: true })).toEqual(scoreUse(withBudget));
   });
 });
+
+describe("acquisition economics: asking cap rate vs target return", () => {
+  // Property-level subject: no space rent, but a listing cap rate and the investor's target.
+  const site = { ceilingFt: fact(20, "ev_ceiling"), askingCapRatePct: fact(7.25, "ev_cap") };
+  const target = (pct: number) => ({ targetReturnPct: fact(pct, "ev_target") });
+
+  it.each([
+    [7, 90],
+    [8, 60],
+    [9, 30],
+  ])("target %s%% → economic %s", (pct, expected) => {
+    const r = scoreUse({ use: "specialty_retail", site, preferences: target(pct) });
+    expect(r.scores.economic.score).toBe(expected);
+    expect(r.scores.economic.rationale).toMatch(/the seller's figure, not an underwritten return/);
+    expect(r.scores.economic.evidenceIds).toEqual(["ev_cap", "ev_target"]);
+  });
+
+  it("needs both the cap rate and a target", () => {
+    expect(scoreUse({ use: "specialty_retail", site }).scores.economic.score).toBeNull();
+    expect(scoreUse({ use: "specialty_retail", site: { ceilingFt: site.ceilingFt }, preferences: target(7) }).scores.economic.score).toBeNull();
+  });
+});

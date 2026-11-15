@@ -29,8 +29,11 @@ export interface AuditFinding {
   detail: string;
 }
 
-/** "vacant" / "vacancy", except where we say availability is NOT confirmed vacancy. */
-const VACANCY = /\bvacan(t|cy)\b/i;
+/**
+ * Calling a space "vacant" breaks the data rules; "vacancy" alone is also a finance term
+ * ("vacancy allowance"), so only "vacant" is flagged, except where we say it is NOT vacant.
+ */
+const VACANCY = /\bvacant\b/i;
 const NEGATED_VACANCY = /not (?:confirmed |physical )*(?:physical )?vacan(?:t|cy)|not confirmed vacan|≠ vacan|not vacant/i;
 /** Matterport model ids are 11 url-safe characters. */
 const MATTERPORT_ID = /^[A-Za-z0-9]{11}$/;

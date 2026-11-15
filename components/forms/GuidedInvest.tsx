@@ -11,7 +11,7 @@ import { useAnalyzeForm } from "./use-analyze-form";
 
 /* ------------------------------------------------------------------ data */
 
-type Answers = {
+export type Answers = {
   capitalUsd?: string;
   strategy?: "acquire" | "lease" | "either";
   markets?: string[];
@@ -21,8 +21,8 @@ type Answers = {
   horizonYears?: string;
 };
 
-type StepId = keyof Answers;
-const ORDER: StepId[] = ["capitalUsd", "strategy", "markets", "targetPct", "riskTolerance", "horizonYears"];
+export type StepId = keyof Answers;
+export const ORDER: StepId[] = ["capitalUsd", "strategy", "markets", "targetPct", "riskTolerance", "horizonYears"];
 
 const money = (v: string) => `$${Number(v.replace(/[$,\s]/g, "")).toLocaleString("en-US")}`;
 const STRATEGY = { acquire: "Buy a building", lease: "Lease a space", either: "Open to both" } as const;
@@ -30,7 +30,7 @@ const MARKET = (m: string[]) => (m.length === 2 ? "Houston and Los Angeles" : m[
 const RISK = { low: "Low risk", medium: "Medium risk", high: "High risk" } as const;
 
 /** What the guide asks, and how an answer reads back as the user's reply. */
-const STEPS: Record<StepId, { ask: (a: Answers) => string; reply: (a: Answers) => string }> = {
+export const STEPS: Record<StepId, { ask: (a: Answers) => string; reply: (a: Answers) => string }> = {
   capitalUsd: { ask: () => "Hi, I’m Tess. I’ll find buildings and spaces your money could work in. How much capital can you put in?", reply: (a) => money(a.capitalUsd!) },
   strategy: { ask: (a) => `Nice, ${money(a.capitalUsd!)}. Do you want to buy a building, lease a space to run a business, or see both?`, reply: (a) => STRATEGY[a.strategy!] },
   markets: { ask: () => "Which city should I look in?", reply: (a) => MARKET(a.markets!) },
@@ -39,7 +39,7 @@ const STEPS: Record<StepId, { ask: (a: Answers) => string; reply: (a: Answers) =
   horizonYears: { ask: () => "Last one: how many years would you hold it?", reply: (a) => `${a.horizonYears} years` },
 };
 
-const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+export const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 /* ---------------------------------------------------------------- guide */
 
@@ -140,15 +140,15 @@ export function GuidedInvest({ preset, onUseForm }: { preset?: InvestorDefaults;
   );
 }
 
-const LABEL: Record<StepId, string> = { capitalUsd: "Capital", strategy: "Strategy", markets: "City", targetPct: "Target return", riskTolerance: "Risk", horizonYears: "Hold for" };
+export const LABEL: Record<StepId, string> = { capitalUsd: "Capital", strategy: "Strategy", markets: "City", targetPct: "Target return", riskTolerance: "Risk", horizonYears: "Hold for" };
 
-function fromPreset(p?: InvestorDefaults): Answers {
+export function fromPreset(p?: InvestorDefaults): Answers {
   if (!p) return {};
   return { capitalUsd: p.capitalUsd, strategy: p.strategy, markets: p.markets, targetPct: p.targetPct ?? "", riskTolerance: p.riskTolerance, horizonYears: p.horizonYears };
 }
 
 /** The same field names as the full form, so the same validation and request apply. */
-function Hidden({ answers: a }: { answers: Answers }) {
+export function Hidden({ answers: a }: { answers: Answers }) {
   return (
     <>
       <input type="hidden" name="capitalUsd" value={a.capitalUsd ?? ""} />
@@ -214,7 +214,7 @@ function Chip({ children, onClick, hint }: { children: React.ReactNode; onClick:
   );
 }
 
-function AnswerInput({ id, answers, onAnswer }: { id: StepId; answers: Answers; onAnswer: (a: Answers) => void }) {
+export function AnswerInput({ id, answers, onAnswer }: { id: StepId; answers: Answers; onAnswer: (a: Answers) => void }) {
   switch (id) {
     case "capitalUsd":
       return <NumberAnswer label="Capital in US dollars" placeholder="e.g. 2,000,000" initial={answers.capitalUsd} chips={["500,000", "2,000,000", "7,500,000"]} format={money} onDone={(v) => onAnswer({ capitalUsd: v })} />;

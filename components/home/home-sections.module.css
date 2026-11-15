@@ -1,0 +1,61 @@
+/* Main page: one full-screen section per feature. Scrolling snaps a section at a time; the section
+   in view fades in and plays its animation, the others rest faded. */
+.shell { transition: background-color 1.1s ease; }
+.scroller {
+  height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y mandatory;
+}
+/* Long sections do not fit one phone screen, so snapping is soft there. */
+@media (max-width: 900px) { .scroller { scroll-snap-type: y proximity; } }
+.page { scroll-snap-align: start; scroll-snap-stop: always; }
+
+.rv {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 1.1s cubic-bezier(.22,.61,.36,1), transform 1.3s cubic-bezier(.22,.61,.36,1);
+}
+.page[data-cur="true"] .rv { opacity: 1; transform: none; }
+.page[data-cur="true"] .rv2 { transition-delay: .14s; }
+
+.prog { transition: background-color .9s ease, height .35s ease-out; }
+.tick { transition: background-color .9s ease, width .9s ease; }
+
+@keyframes draw { from { stroke-dashoffset: 1; } }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } }
+@keyframes dim { from { opacity: 1; } }
+@keyframes pop { from { opacity: 0; transform: scale(2.6); } }
+@keyframes tilt { from { transform: perspective(900px) rotateX(0deg) scale(1); } }
+@keyframes growX { from { transform: scaleX(0); } }
+@keyframes growY { from { transform: scaleY(0); } }
+@keyframes slideIn { from { opacity: 0; transform: translate(-90px, -34px); } }
+@keyframes bob { from { transform: translateY(-4px); } to { transform: translateY(6px); } }
+
+.draw { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.growX { transform-origin: left center; }
+.growY { transform-origin: top center; }
+.page[data-cur="true"] .draw { animation: draw 1.2s ease-out both; }
+.page[data-cur="true"] .rise { animation: rise .5s ease-out both; }
+.page[data-cur="true"] .dim { animation: dim 1.2s ease-out both; }
+.page[data-cur="true"] .pop { animation: pop .5s ease-out both; }
+.page[data-cur="true"] .tilt { animation: tilt 1.4s cubic-bezier(.2,.7,.2,1) both; }
+.page[data-cur="true"] .growX { animation: growX .7s ease-out both; }
+.page[data-cur="true"] .growY { animation: growY .4s ease-out both; }
+.page[data-cur="true"] .slideIn { animation: slideIn .8s cubic-bezier(.2,.7,.2,1) both; }
+.bob { animation: bob 1.4s ease-in-out infinite alternate; }
+
+.dots {
+  background-image: radial-gradient(var(--plan-ink) 1.6px, transparent 2px);
+  background-size: 14px 14px;
+}
+
+/* Static fallback: everything shown in its finished state. */
+@media (prefers-reduced-motion: reduce) {
+  .shell, .prog, .tick { transition: none; }
+  .rv { opacity: 1; transform: none; transition: none; }
+  .bob,
+  .page[data-cur="true"] :is(.draw, .rise, .dim, .pop, .tilt, .growX, .growY, .slideIn) { animation: none; }
+}
+@media (scripting: none) { .rv { opacity: 1; transform: none; } }

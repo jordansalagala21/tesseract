@@ -132,7 +132,9 @@ describe("runAnalysis", () => {
     expect(gym.scores.physical.score).toBe(100);
     expect(gym.scores.market.score).toBeNull(); // nearby context failed → insufficient evidence
     expect(gym.scores.economic.score).toBeNull(); // no budget and no comparables
-    expect(gym.verdict).toBe("insufficient_evidence");
+    // An owner still gets an overall from what is known, but never "promising" without economics.
+    expect(gym.scores.overall).not.toBeNull();
+    expect(gym.verdict).toBe("possible");
     expect(cafe.scores.physical.score!).toBeLessThan(100); // 9,889 SF is far above a café's range
   });
 
@@ -162,7 +164,8 @@ describe("runAnalysis", () => {
   it("lists each use's key checks as unknowns", async () => {
     const r = await runAnalysis({ id: "t7b", request, createMessage: happyPath().create, model: "test", deps });
     const gym = r.opportunities.find((o) => o.useCategory === "fitness_studio")!;
-    expect(gym.unknowns[0]).toBe("Parking"); // the model's own first
+    expect(gym.unknowns[0]).toMatch(/^Economics not assessed: .* capped at "possible"/); // the stated gap first
+    expect(gym.unknowns[1]).toBe("Parking"); // then the model's own
     expect(gym.unknowns).toContain("Floor loading and sound or vibration limits for equipment");
   });
 

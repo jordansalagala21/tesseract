@@ -5,6 +5,12 @@ import { runAnalysis, type CreateMessage } from "@/lib/agent/orchestrator";
 import { PERSONA_WEIGHTS, allowedStrategies, orderForPersona, personaPrompt } from "@/lib/agent/personas";
 import { UNAVAILABLE_DEPS, type DataDeps, type ToolOutput } from "@/lib/agent/tools";
 
+/** An opportunity with `known` of the four components scored (in order physical, market, access, economic). */
+const ranked = (strategy: Opportunity["strategy"], overall: number | null, known = 2) => {
+  const c = (i: number) => ({ score: i < known ? 70 : null, rationale: "", evidenceIds: [] });
+  return { strategy, scores: { physical: c(0), market: c(1), access: c(2), economic: c(3), overall } } as unknown as Opportunity;
+};
+
 let n = 0;
 const toolUse = (name: string, input: Record<string, unknown>) => ({ type: "tool_use" as const, id: `tu_${++n}`, name, input });
 const msg = (content: unknown[]) => ({ id: `m${++n}`, type: "message", role: "assistant", model: "t", content, stop_reason: "tool_use", stop_sequence: null, usage: {} }) as unknown as BetaMessage;
@@ -52,9 +58,19 @@ describe("persona settings", () => {
 
   it("orders investor results acquisition first, then lease, each by score", () => {
     const input = AnalysisRequest.parse({ input: { persona: "investor", capitalUsd: 1e6, riskTolerance: "low", markets: ["houston"], horizonYears: 5, strategy: "either" } }).input;
-    const o = (strategy: Opportunity["strategy"], overall: number | null) => ({ strategy, scores: { overall } }) as Opportunity;
-    const ordered = orderForPersona(input, [o("lease", 90), o("acquisition", 40), o("acquisition", 70), o("reposition", null)]);
+    const ordered = orderForPersona(input, [ranked("lease", 90), ranked("acquisition", 40), ranked("acquisition", 70), ranked("reposition", null)]);
     expect(ordered.map((x) => [x.strategy, x.scores.overall])).toEqual([["acquisition", 70], ["acquisition", 40], ["lease", 90], ["reposition", null]]);
+  });
+
+  it("ranks better-evidenced ideas first, so an empty component can't inflate a score", () => {
+    // Live 2600 Travis run: coworking scored 97 on physical + market only (access empty);
+    // restaurant scored 94 on physical + market + access. The restaurant must rank first.
+    const owner = AnalysisRequest.parse({ input: { persona: "owner", propertyId: 1018657 } }).input;
+    const coworking = { ...ranked("lease", 97, 2), useCategory: "coworking" } as Opportunity;
+    const restaurant = { ...ranked("lease", 94, 3), useCategory: "restaurant_bar" } as Opportunity;
+    expect(orderForPersona(owner, [coworking, restaurant]).map((x) => x.useCategory)).toEqual(["restaurant_bar", "coworking"]);
+    // Same coverage → by score.
+    expect(orderForPersona(owner, [ranked("lease", 60, 3), ranked("lease", 80, 3)]).map((x) => x.scores.overall)).toEqual([80, 60]);
   });
 
   it("gives each persona its own goal and tool strategy", () => {

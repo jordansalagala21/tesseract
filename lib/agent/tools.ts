@@ -91,6 +91,8 @@ export interface AgentState {
   marketAnalyses: Record<number, MarketAnalysis>;
   preferences: UserPreferences;
   weights?: Partial<Weights>;
+  /** Owners have no budget: allow an overall score without economics (verdict capped). */
+  economicOptional?: boolean;
   scores: Record<string, Partial<Record<UseCategory, ScoreResult>>>;
   scenarios: FinancialScenario[];
   newId: (prefix: string) => string;
@@ -273,6 +275,7 @@ function scoreUses(state: AgentState, input: z.infer<(typeof TOOL_INPUTS)["score
       market: { comparableRent: ctx?.comparableRent, ...ctx?.byUse?.[use] },
       preferences: state.preferences,
       weights: state.weights,
+      economicOptional: state.economicOptional,
     });
     (state.scores[input.subject] ??= {})[use] = r;
     return r;

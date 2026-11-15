@@ -41,9 +41,19 @@ export function allowedStrategies(input: PersonaInput): Strategy[] {
   }
 }
 
-/** Investors see acquisition and lease/reposition as separate groups; within a group, by score. */
+/** How many of the four components have evidence. */
+const coverage = (o: Opportunity) =>
+  [o.scores.physical, o.scores.market, o.scores.access, o.scores.economic].filter((c) => c.score !== null).length;
+
+/**
+ * Ranking: ideas backed by more evidence first, then by overall score. The overall re-normalizes
+ * over known components, so without this an idea with an empty component (coworking ignores
+ * frontage, so its access score is often empty) would outrank better-evidenced ideas.
+ * Investors see acquisition and lease/reposition as separate groups, each ranked the same way.
+ */
 export function orderForPersona(input: PersonaInput, opportunities: Opportunity[]): Opportunity[] {
-  const byScore = (a: Opportunity, b: Opportunity) => (b.scores.overall ?? -1) - (a.scores.overall ?? -1);
+  const byScore = (a: Opportunity, b: Opportunity) =>
+    coverage(b) - coverage(a) || (b.scores.overall ?? -1) - (a.scores.overall ?? -1);
   if (input.persona !== "investor") return [...opportunities].sort(byScore);
   const acquisition = opportunities.filter((o) => o.strategy === "acquisition").sort(byScore);
   const leasing = opportunities.filter((o) => o.strategy !== "acquisition").sort(byScore);

@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   // DuckDB ships a native binary; keep it out of the server bundle.
   serverExternalPackages: ["@duckdb/node-api"],
+  // Files read at runtime by path, which the bundler cannot see: the CoStar DuckDB database and the
+  // recorded demo runs. Both are gitignored (sponsor data) and uploaded with `vercel deploy`.
+  outputFileTracingIncludes: {
+    "/**": ["./data/tesseract.duckdb", "./data/demo/*.json"],
+  },
   turbopack: {
     rules: {
       "*.css": {

@@ -17,6 +17,11 @@ const ServerEnv = z.object({
   /** Optional: only `npm run concepts:generate` uses it (offline concept images). */
   OPENAI_API_KEY: z.string().min(1).optional(),
   OPENAI_IMAGE_MODEL: z.string().default("gpt-image-2"),
+  /** Optional, deployments: live analyses allowed per day (lib/agent/limits.ts). */
+  ANALYSIS_DAILY_LIMIT: z.string().optional(),
+  /** Optional, deployments: Upstash Redis shared store (lib/agent/kv.ts). Set by Vercel's Upstash integration. */
+  KV_REST_API_URL: z.string().optional(),
+  KV_REST_API_TOKEN: z.string().optional(),
 });
 export type ServerEnv = z.infer<typeof ServerEnv>;
 

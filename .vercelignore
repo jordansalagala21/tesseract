@@ -1,0 +1,18 @@
+# What `vercel deploy` must NOT upload. (When this file exists Vercel uses it instead of .gitignore,
+# so the gitignored CoStar database, recorded demo runs and concept images DO get uploaded.)
+# Secrets: never upload. Production keys live in the Vercel project's environment variables.
+.env
+.env.*
+!.env.example
+# Build output and dependencies (Vercel installs and builds itself)
+node_modules
+.next
+tsconfig.tsbuildinfo
+# Local scratch, tests and tooling not needed to run the site
+tmp
+tests
+.github
+# Raw sponsor kit folders and imports, if anyone keeps them inside the repo
+*.jsonl
+*.duckdb.wal
+data/kit

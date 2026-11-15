@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import type { AgentToolCall, Opportunity } from "@/lib/contracts";
 import { travisAnalysisFixture } from "@/lib/contracts/examples/travis";
 import { AnalysisResults } from "@/components/analysis/AnalysisResults";
+import { AgentFlow } from "@/components/intake/AgentFlow";
 import { defaultAssumption, runScenario } from "@/lib/finance";
 import { PageHeader, PageShell } from "@/components/site/PageShell";
 import { Notice } from "@/components/ui/notice";
@@ -142,6 +143,10 @@ export default function AnalysisPreviewPage() {
     <PageShell>
         <PageHeader title="Analysis preview" description="Shows how analysis results will look before the agent is connected." />
         <Notice title="Sample data">Step 1 and the first ranked use are the 2600 Travis St development fixture. Steps 2 to 7 and the “Example” acquisition card are example states for checking the design, and the buying scenario uses a made-up price. None of this is live agent output.</Notice>
+        <div className="flex flex-col gap-3">
+          <p className="text-base font-medium text-muted-foreground">Agent loading screen, with the sample steps above (owner)</p>
+          <AgentFlow persona="owner" status="running" toolCalls={[...a.toolCalls, ...uiStateSteps]} />
+        </div>
         <AnalysisResults analysis={{ ...a, status: "running", toolCalls: [...a.toolCalls, ...uiStateSteps] }} />
         <div className="flex flex-col gap-3">
           <p className="text-base font-medium text-muted-foreground">Investor view: buying and leasing stay separate</p>

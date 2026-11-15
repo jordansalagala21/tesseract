@@ -19,7 +19,7 @@ describe("main page content", () => {
   });
 
   it("sends each path to its own route", () => {
-    expect(PATHS.map((p) => p.href)).toEqual(["/properties", "/start", "/invest"]);
+    expect(PATHS.map((p) => p.href)).toEqual(["/explore", "/start", "/invest"]);
   });
 
   it("replays animations every 5 s, and the longer analysis sequence every 9 s", () => {

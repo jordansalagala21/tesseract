@@ -85,7 +85,7 @@ export const PATHS = [
     start: "Start with a property and, if you like, one advertised suite.",
     get: "Get ranked reuse ideas with evidence, risks and a 3D walkthrough.",
     action: "Explore my property",
-    href: "/properties",
+    href: "/explore",
   },
   {
     id: "founder",

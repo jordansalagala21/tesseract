@@ -167,7 +167,18 @@ function toEvidence(raw: RawObservation[], images: VisionImage[], opts: VisionOp
       dropped++;
       return;
     }
-    const media = idx.flatMap((i) => (images[i].mediaRef ? [{ type: images[i].kind === "floorplan" ? ("floorplan" as const) : images[i].kind.startsWith("aerial") ? ("aerial" as const) : ("image" as const), ref: images[i].mediaRef! }] : []));
+    // Interior refs are Matterport model ids (the UI opens the tour), aerial refs are our proxy
+    // URLs. One entry per distinct ref: six photos from one scan are one tour, not six images.
+    const media = [
+      ...new Map(
+        idx.flatMap((i) => {
+          const ref = images[i].mediaRef;
+          if (!ref) return [];
+          const type = images[i].kind.startsWith("aerial") ? ("aerial" as const) : ("matterport_model" as const);
+          return [[`${type}:${ref}`, { type, ref }] as const];
+        }),
+      ).values(),
+    ];
     kept.push({
       tag: o.tag,
       confidence: o.confidence,

@@ -49,11 +49,15 @@ export function observationsWithImages(evidence: Evidence[]): { e: Evidence; ima
  * the property's aerial view.
  */
 export function heroImageFor(o: Opportunity, byId: Map<string, Evidence>, pool: ResultImage[], used: Set<string>): ResultImage | null {
+  // Photos read better than floor plans on a card; a floor plan only when nothing else is left.
+  const photo = (i: ResultImage) => i.kind === "scan" && !i.src.includes("/floorplans-");
   const own = o.supportingEvidenceIds.flatMap((id) => {
     const e = byId.get(id);
     return e ? imagesFor(e).filter((i) => i.kind === "scan") : [];
   });
-  const pick = own.find((i) => !used.has(i.src)) ?? pool.find((i) => i.kind === "scan" && !used.has(i.src)) ?? own[0] ?? pool[0];
+  const free = (i: ResultImage) => !used.has(i.src);
+  const pick =
+    own.find((i) => photo(i) && free(i)) ?? pool.find((i) => photo(i) && free(i)) ?? own.find(free) ?? pool.find((i) => i.kind === "scan" && free(i)) ?? own[0] ?? pool[0];
   if (pick) {
     used.add(pick.src);
     return pick;

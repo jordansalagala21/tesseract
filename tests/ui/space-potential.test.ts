@@ -15,9 +15,10 @@ const call = (n: number, propertyId: number, spaceId: number, evidenceIds: strin
 const opp = (propertyId: number, spaceId: number | null, useCategory = "restaurant_bar") => ({ propertyId, spaceId, useCategory }) as Opportunity;
 
 describe("concepts", () => {
-  it("uses a generic concept for gym and café, labelled as generic", () => {
-    expect(conceptFor(opp(1018657, 21053094, "fitness_studio"))).toEqual({ src: "/hero/gym.webp", scope: "generic" });
-    expect(conceptFor(opp(1018657, 21053094, "cafe"))?.scope).toBe("generic");
+  it("never shows a concept made from a different building", () => {
+    // The home-page gym and café renders come from another property, so they are not used here.
+    expect(conceptFor(opp(1018657, 21053094, "fitness_studio"))).toBeNull();
+    expect(conceptFor(opp(1018657, 21053094, "cafe"))).toBeNull();
   });
   it("has no concept (placeholder) for uses without one", () => {
     expect(conceptFor(opp(1018657, 21053094, "medical_office"))).toBeNull();

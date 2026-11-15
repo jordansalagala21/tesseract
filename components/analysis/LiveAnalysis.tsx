@@ -8,10 +8,7 @@ import { AnalysisResponse } from "@/lib/contracts";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { EmptyState, Skeleton } from "@/components/ui/states";
-import { AnalysisResults } from "./AnalysisResults";
-import { MarketDashboard } from "./MarketDashboard";
 import { ResultsOverview } from "./ResultsOverview";
-import { ScenarioControls } from "./ScenarioControls";
 import { StepStrip } from "./StepStrip";
 import { startAnalysis } from "./start-analysis";
 
@@ -166,38 +163,10 @@ export function LiveAnalysis({ id }: { id: string }) {
         )}
       </div>
 
-      <StepStrip toolCalls={a.toolCalls} status={a.status} />
+      {/* The five-step progress strip is for the waiting minute; finished runs go straight to the result. */}
+      {!isDone(a) && <StepStrip toolCalls={a.toolCalls} status={a.status} />}
 
       <ResultsOverview analysis={a} />
-
-
-      {a.marketAnalysis && <MarketDashboard analysis={a.marketAnalysis} evidence={a.evidence} />}
-
-      {a.financialScenarios.length > 0 && (
-        <section aria-labelledby="numbers-heading" className="flex flex-col gap-4">
-          <div>
-            <h2 id="numbers-heading" className="text-xl font-semibold tracking-tight">
-              Run the numbers
-            </h2>
-            <p className="mt-1 max-w-measure text-base text-muted-foreground">Each number says where it came from: CoStar, you, or an app default. Change one and the result updates.</p>
-          </div>
-          {a.financialScenarios.map((s) => (
-            <ScenarioControls key={s.id} scenario={s} />
-          ))}
-        </section>
-      )}
-
-      {/* The complete record, one click away: every step with its evidence, and each idea in detail. */}
-      <details className="group rounded-2xl border bg-card">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 text-base font-semibold">
-          Full investigation and evidence ({a.toolCalls.length} steps · {a.evidence.length} pieces of evidence)
-          <span className="text-sm font-normal text-muted-foreground group-open:hidden">Show</span>
-          <span className="hidden text-sm font-normal text-muted-foreground group-open:inline">Hide</span>
-        </summary>
-        <div className="border-t p-5">
-          <AnalysisResults analysis={{ ...a, financialScenarios: [] }} />
-        </div>
-      </details>
 
       <ul className="flex flex-col gap-1 border-t pt-4 text-sm text-muted-foreground">
         {a.disclaimers.map((d) => (

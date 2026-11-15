@@ -22,6 +22,11 @@ describe("concepts", () => {
   it("has no concept (placeholder) for uses without one", () => {
     expect(conceptFor(opp(1018657, 21053094, "medical_office"))).toBeNull();
   });
+  it("prefers a concept generated from this space, and only from our own /concepts/ path", () => {
+    const manifest = { "p1018657-s21053094": { fitness_studio: "/concepts/p1018657-s21053094/fitness_studio.webp", medical_office: "https://evil.example/x.webp" } };
+    expect(conceptFor(opp(1018657, 21053094, "fitness_studio"), manifest)).toEqual({ src: "/concepts/p1018657-s21053094/fitness_studio.webp", scope: "space" });
+    expect(conceptFor(opp(1018657, 21053094, "medical_office"), manifest)).toBeNull();
+  });
 });
 
 describe("spaceImagesFor", () => {

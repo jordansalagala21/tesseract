@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Box, Check, ExternalLink, Eye, ImageOff, Sparkles } from "lucide-react";
 import type { AnalysisResponse, Evidence, Opportunity } from "@/lib/contracts";
 import { USES, type UseCategory } from "@/lib/market/uses";
 import { cn } from "@/lib/utils";
 import { safeEmbedUrl } from "@/components/viewer/tours";
-import { conceptFor } from "./concepts";
+import { conceptFor, type ConceptManifest } from "./concepts";
 import { cleanStatement } from "./evidence-format";
 import { reasonsFor, spaceImagesFor, type ResultImage } from "./result-images";
 
@@ -30,6 +30,7 @@ export function SpacePotential({
   onSelect: (index: number) => void;
   onEvidence: (id: string) => void;
 }) {
+  const manifest = useConceptManifest();
   const ideas = a.opportunities;
   const o = ideas[Math.min(selected, ideas.length - 1)];
   if (!o) return null;
@@ -66,7 +67,7 @@ export function SpacePotential({
       <div className="grid gap-5 lg:grid-cols-2">
         {/* key: a different property starts on its own first photo */}
         <CurrentSpace key={`${o.propertyId}-${o.spaceId}`} images={space.images} modelId={space.modelId} propertyId={o.propertyId} />
-        <PotentialConcept o={o} />
+        <PotentialConcept o={o} manifest={manifest} />
       </div>
 
       <WhyItFits o={o} byId={byId} onEvidence={onEvidence} />
@@ -118,8 +119,24 @@ function CurrentSpace({ images, modelId, propertyId }: { images: ResultImage[]; 
 
 /* ---------------------------------------------------------------- right */
 
-function PotentialConcept({ o }: { o: Opportunity }) {
-  const concept = conceptFor(o);
+/** Concepts generated offline (public/concepts/manifest.json); none yet is fine. */
+function useConceptManifest(): ConceptManifest {
+  const [manifest, setManifest] = useState<ConceptManifest>({});
+  useEffect(() => {
+    let live = true;
+    fetch("/concepts/manifest.json", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((m) => live && m && typeof m === "object" && setManifest(m as ConceptManifest))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
+  return manifest;
+}
+
+function PotentialConcept({ o, manifest }: { o: Opportunity; manifest: ConceptManifest }) {
+  const concept = conceptFor(o, manifest);
   return (
     <figure className="flex flex-col gap-3">
       <figcaption className="flex min-h-11 items-center gap-2">

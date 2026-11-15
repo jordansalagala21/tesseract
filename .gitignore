@@ -60,3 +60,6 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 .vercel
+
+# ---------- generated concept images (derived from sponsor imagery; npm run concepts:generate) ----------
+/public/concepts/

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { PropertyFacts, SpaceList, TenantList } from "@/components/property/PropertyDetail";
 import { PageHeader } from "@/components/site/PageShell";
 import { DataUnavailable } from "@/components/property/DataUnavailable";
+import { formatPostcode } from "@/components/property/format";
 import { AerialViewer } from "@/components/viewer/AerialViewer";
 import { MatterportViewer } from "@/components/viewer/MatterportViewer";
 import { toTourOptions } from "@/components/viewer/tours";
@@ -30,7 +31,7 @@ export default async function PropertyPage({ params, searchParams }: PageProps<"
       <PageHeader
         back={{ href: "/properties", label: "Properties" }}
         title={p.name ?? p.address.street}
-        description={`${p.name ? `${p.address.street}, ` : ""}${p.address.city}, ${p.address.state} ${p.address.postcode ?? ""}`.trim()}
+        description={`${p.name ? `${p.address.street}, ` : ""}${p.address.city}, ${p.address.state} ${formatPostcode(p.address.postcode)}`.trim()}
       />
       {/* Tour and the building facts side by side on wide screens, so both are in the first view. */}
       <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:gap-8">

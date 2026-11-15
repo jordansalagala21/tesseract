@@ -3,6 +3,9 @@ import type { AvailableSpace } from "@/lib/contracts";
 const num = new Intl.NumberFormat("en-US");
 const date = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
+/** CoStar stores ZIP+4 as nine digits: "770063540" → "77006-3540". Anything else is shown as given. */
+export const formatPostcode = (code: string | null | undefined) => (code && /^\d{9}$/.test(code) ? `${code.slice(0, 5)}-${code.slice(5)}` : (code ?? ""));
+
 /** "GeneralRetail" → "General retail", "FirstFloor" → "First floor" */
 export function humanize(value: string | null | undefined): string | null {
   if (!value) return null;

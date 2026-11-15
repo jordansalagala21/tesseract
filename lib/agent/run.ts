@@ -79,9 +79,9 @@ export async function executeAnalysis(id: string, request: AnalysisRequest, deps
       deps: deps ?? liveDeps(createMessage, env.ANTHROPIC_MODEL_ORCHESTRATOR),
       onUpdate: saveAnalysis,
     });
-    saveAnalysis(result);
+    await saveAnalysis(result);
   } catch (e) {
-    saveAnalysis({
+    await saveAnalysis({
       ...queuedAnalysis(id, request),
       status: "failed",
       completedAt: new Date().toISOString(),

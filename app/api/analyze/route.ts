@@ -3,6 +3,7 @@ import { after } from "next/server";
 import type { z } from "zod";
 import { AnalyzeAcceptedResponse, AnalyzeRequestBody } from "@/lib/contracts";
 import { executeAnalysis, queuedAnalysis } from "@/lib/agent/run";
+import { takeDailyRun } from "@/lib/agent/limits";
 import { saveAnalysis } from "@/lib/agent/store";
 import { apiError } from "@/lib/http";
 
@@ -18,8 +19,19 @@ export async function POST(request: Request) {
     return apiError(400, "bad_request", "Invalid analysis request.", { details: parsed.error.issues });
   }
 
+  // A public deployment must not run up the API bills: cap live analyses per day.
+  let allowance;
+  try {
+    allowance = await takeDailyRun();
+  } catch {
+    return apiError(503, "upstream_error", "The analysis service is busy. Try again in a minute.");
+  }
+  if (!allowance.ok) {
+    return apiError(429, "rate_limited", `Today's ${allowance.limit} live analyses have all been used. Try again tomorrow, or open one of the recorded demo runs.`);
+  }
+
   const id = `ana_${crypto.randomUUID()}`;
-  saveAnalysis(queuedAnalysis(id, parsed.data));
+  await saveAnalysis(queuedAnalysis(id, parsed.data));
   // Run after the response is sent; the client polls GET /api/analysis/[id].
   after(() => executeAnalysis(id, parsed.data));
 

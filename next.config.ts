@@ -7,6 +7,13 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   // DuckDB ships a native binary; keep it out of the server bundle.
   serverExternalPackages: ["@duckdb/node-api"],
+  // Files loaded at runtime by path, which the bundler cannot see:
+  //  - the CoStar DuckDB database and the recorded demo runs (gitignored sponsor data, uploaded
+  //    with `vercel deploy`);
+  //  - DuckDB's native library, libduckdb.so, which duckdb.node loads on Linux servers.
+  outputFileTracingIncludes: {
+    "/**": ["./data/tesseract.duckdb", "./data/demo/*.json", "./node_modules/@duckdb/node-bindings-linux-*/**"],
+  },
   turbopack: {
     rules: {
       "*.css": {

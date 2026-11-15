@@ -27,16 +27,27 @@ export function imagesFor(e: Evidence): ResultImage[] {
   return [...new Map(out.map((i) => [i.src, i])).values()];
 }
 
+const isFurnishedNote = (e: Evidence) => e.id.endsWith("_furnished");
+
 /**
- * AI observations that point at a specific picture, interior first. "Not seen" notes are left
- * out: they cite every image, so no single picture shows them.
+ * Scan photos the vision step saw furniture or belongings in (its `<prefix>_furnished`
+ * observation). They are kept out of view everywhere: people want to see the bare space.
  */
-export function observationsWithImages(evidence: Evidence[]): { e: Evidence; image: ResultImage }[] {
+export function furnishedPhotos(evidence: Evidence[]): Set<string> {
+  return new Set(evidence.filter((e) => e.kind === "ai_observation" && isFurnishedNote(e)).flatMap((e) => imagesFor(e).map((i) => i.src)));
+}
+
+/**
+ * AI observations that point at a specific picture, interior first, each with its first
+ * unfurnished picture. "Not seen" notes are left out: they cite every image, so no single
+ * picture shows them.
+ */
+export function observationsWithImages(evidence: Evidence[], hide: Set<string> = furnishedPhotos(evidence)): { e: Evidence; image: ResultImage }[] {
   const seen = new Set<string>();
   const rows = evidence
-    .filter((e) => e.kind === "ai_observation" && !e.id.includes("_none_"))
+    .filter((e) => e.kind === "ai_observation" && !e.id.includes("_none_") && !isFurnishedNote(e))
     .flatMap((e) => {
-      const image = imagesFor(e)[0];
+      const image = imagesFor(e).find((i) => !hide.has(i.src));
       return image ? [{ e, image }] : [];
     })
     .filter(({ image }) => (seen.has(image.src) ? false : (seen.add(image.src), true)));
@@ -48,12 +59,12 @@ export function observationsWithImages(evidence: Evidence[]): { e: Evidence; ima
  * the bar, the showroom the glazing), else a different photo from the analysis per rank, else
  * the property's aerial view.
  */
-export function heroImageFor(o: Opportunity, byId: Map<string, Evidence>, pool: ResultImage[], used: Set<string>): ResultImage | null {
+export function heroImageFor(o: Opportunity, byId: Map<string, Evidence>, pool: ResultImage[], used: Set<string>, hide: Set<string> = new Set()): ResultImage | null {
   // Photos read better than floor plans on a card; a floor plan only when nothing else is left.
   const photo = (i: ResultImage) => i.kind === "scan" && !i.src.includes("/floorplans-");
   const own = o.supportingEvidenceIds.flatMap((id) => {
     const e = byId.get(id);
-    return e ? imagesFor(e).filter((i) => i.kind === "scan") : [];
+    return e ? imagesFor(e).filter((i) => i.kind === "scan" && !hide.has(i.src)) : [];
   });
   const free = (i: ResultImage) => !used.has(i.src);
   const pick =
@@ -68,7 +79,7 @@ export function heroImageFor(o: Opportunity, byId: Map<string, Evidence>, pool: 
 /** Up to three plain reasons for an idea, mixing what the AI saw with CoStar facts. */
 export function reasonsFor(o: Opportunity, byId: Map<string, Evidence>): Evidence[] {
   const cited = o.supportingEvidenceIds.map((id) => byId.get(id)).filter((e): e is Evidence => !!e);
-  const seen = cited.filter((e) => e.kind === "ai_observation");
+  const seen = cited.filter((e) => e.kind === "ai_observation" && !isFurnishedNote(e));
   const facts = cited.filter((e) => e.kind === "verified_fact").sort((a, b) => a.statement.length - b.statement.length);
   // One thing the AI saw first (it makes each idea specific), then CoStar facts, then more seen.
   return [...seen.slice(0, 1), ...facts, ...seen.slice(1)].slice(0, 3);
@@ -79,7 +90,7 @@ export function reasonsFor(o: Opportunity, byId: Map<string, Evidence>): Evidenc
  * property (and suite), plus the scan's model id for "Open 3D tour". Ideas on different
  * properties (business starters, investors) each get their own space.
  */
-export function spaceImagesFor(o: Opportunity, a: AnalysisResponse): { images: ResultImage[]; modelId: string | null } {
+export function spaceImagesFor(o: Opportunity, a: AnalysisResponse): { images: ResultImage[]; hidden: number; modelId: string | null } {
   const byId = new Map(a.evidence.map((e) => [e.id, e]));
   const matches = (input: Record<string, unknown>) => input.propertyId === o.propertyId && (!o.spaceId || !input.spaceId || input.spaceId === o.spaceId);
   const ids = (tool: AnalysisResponse["toolCalls"][number]["tool"]) => a.toolCalls.filter((c) => c.tool === tool && c.status === "succeeded" && matches(c.input)).flatMap((c) => c.evidenceIds);
@@ -88,11 +99,13 @@ export function spaceImagesFor(o: Opportunity, a: AnalysisResponse): { images: R
     .map((id) => byId.get(id))
     .filter((e): e is Evidence => !!e && !e.id.includes("_none_"))
     .flatMap((e) => imagesFor(e).filter((i) => i.kind === "scan"));
-  const images = [...new Map(scans.map((i) => [i.src, i])).values()];
+  const all = [...new Map(scans.map((i) => [i.src, i])).values()];
+  const hide = furnishedPhotos(a.evidence);
+  const images = all.filter((i) => !hide.has(i.src));
 
-  const fromPhotos = /\/api\/imagery\/matterport\/([A-Za-z0-9]+)\//.exec(images[0]?.src ?? "")?.[1];
+  const fromPhotos = /\/api\/imagery\/matterport\/([A-Za-z0-9]+)\//.exec(all[0]?.src ?? "")?.[1];
   const fromModel = ids("get_matterport_model")
     .flatMap((id) => byId.get(id)?.media ?? [])
     .find((m) => m.type === "matterport_model")?.ref;
-  return { images, modelId: fromPhotos ?? fromModel ?? null };
+  return { images, hidden: all.length - images.length, modelId: fromPhotos ?? fromModel ?? null };
 }

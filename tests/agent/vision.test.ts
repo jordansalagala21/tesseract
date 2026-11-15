@@ -108,6 +108,18 @@ describe("analyzeInteriorImages", () => {
     expect(none && none.kind === "ai_observation" && none.caveat).toMatch(/does not mean it is absent/);
   });
 
+  it("lists furnished photos in one observation, ignoring bad indexes, and omits it when none are", async () => {
+    const { createMessage } = fakeModel({ ...result, furnishedImageIndexes: [1, 0, 1, 7] });
+    const out = await analyzeInteriorImages(await images(2), "s", opts(createMessage));
+    const furnished = out.evidence.find((e) => e.id === "ev_int1_furnished");
+    expect(furnished?.statement).toBe("2 scan images show furniture or belongings from the space's current fit-out.");
+    expect(furnished?.sources?.map((s) => s.field)).toEqual(["assets.photos[0]", "assets.photos[1]"]);
+    expect(furnished?.statement).not.toMatch(/vacant/i);
+
+    const bare = await analyzeInteriorImages(await images(2), "s", opts(fakeModel(result).createMessage));
+    expect(bare.evidence.some((e) => e.id?.endsWith("_furnished"))).toBe(false);
+  });
+
   it("sends downscaled base64 images, a JSON schema and the refusal fallback", async () => {
     const { createMessage, calls } = fakeModel({ observations: [], notObserved: [] });
     await analyzeInteriorImages(await images(3), "s", opts(createMessage));

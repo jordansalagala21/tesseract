@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { AlertTriangle, Box, Check, ChevronDown, ExternalLink, Eye, ImageOff, MapPin, Ruler, Sparkles, Tag } from "lucide-react";
+import { AlertTriangle, ArrowRight, Box, Check, ChevronDown, ExternalLink, Eye, ImageOff, MapPin, Ruler, Sparkles, Tag } from "lucide-react";
 import type { AnalysisResponse, Evidence, Opportunity } from "@/lib/contracts";
 import { Badge } from "@/components/ui/badge";
 import { USES, type UseCategory } from "@/lib/market/uses";
 import { cn } from "@/lib/utils";
 import { safeEmbedUrl } from "@/components/viewer/tours";
-import { conceptFor, type ConceptManifest } from "./concepts";
+import { conceptFor, emptyViewFor, type ConceptManifest } from "./concepts";
 import { cleanStatement } from "./evidence-format";
+import { delay, motion as m, useCountUp, useMounted } from "./motion";
 import { SCORE_PARTS, STRATEGIES, VERDICTS } from "./opportunity-format";
 import { factsFor, risksFor } from "./result-facts";
 import { reasonsFor, spaceImagesFor, type ResultImage } from "./result-images";
@@ -54,7 +55,7 @@ export function Recommendation({
   const verdict = VERDICTS[o.verdict];
 
   return (
-    <section id="recommendation" aria-labelledby="rec-heading" className="scroll-mt-6 overflow-hidden rounded-2xl border bg-card">
+    <section id="recommendation" aria-labelledby="rec-heading" className={cn("scroll-mt-6 overflow-hidden rounded-2xl border bg-card shadow-sm", m.rise)}>
       <div className="flex flex-col gap-4 p-4 sm:p-6">
         {ideas.length > 1 && (
           <div role="group" aria-label="Compare ideas" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
@@ -64,9 +65,11 @@ export function Recommendation({
                 type="button"
                 aria-pressed={i === selected}
                 onClick={() => onSelect(i)}
+                style={delay(i, 50)}
                 className={cn(
-                  "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  i === selected ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted",
+                  "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap outline-none transition-all duration-300 focus-visible:ring-2 focus-visible:ring-ring active:scale-95",
+                  m.rise,
+                  i === selected ? "border-primary bg-primary text-primary-foreground shadow-md shadow-primary/25" : "bg-background hover:-translate-y-0.5 hover:bg-muted",
                 )}
               >
                 <span className="tabular-nums">{idea.rank}</span>
@@ -76,7 +79,7 @@ export function Recommendation({
           </div>
         )}
 
-        <div className="flex flex-col gap-2">
+        <div key={o.id} className={cn("flex flex-col gap-2", m.rise)}>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="accent">{o.rank === 1 ? "Top recommendation" : `Idea ${o.rank} of ${ideas.length}`}</Badge>
             <Badge variant={verdict.variant}>{verdict.label}</Badge>
@@ -114,16 +117,28 @@ export function Recommendation({
       </div>
 
       {/* The centrepiece: today vs. what it could become, same room. */}
-      <div className="grid gap-4 px-4 pb-5 sm:px-6 lg:grid-cols-2">
-        <CurrentSpace key={`${o.propertyId}-${o.spaceId}`} images={space.images} modelId={space.modelId} propertyId={o.propertyId} suite={f.suite} />
-        <Concept o={o} manifest={manifest} />
+      <div className="relative grid gap-4 px-4 pb-5 sm:px-6 lg:grid-cols-2">
+        <CurrentSpace
+          key={`${o.propertyId}-${o.spaceId}`}
+          images={space.images}
+          hidden={space.hidden}
+          emptyView={emptyViewFor(o, manifest)}
+          modelId={space.modelId}
+          propertyId={o.propertyId}
+          suite={f.suite}
+        />
+        <Concept key={o.id} o={o} manifest={manifest} />
+        {/* Today → could become, on wide screens: a small arrow over the gap between the pictures. */}
+        <span aria-hidden="true" className={cn("pointer-events-none absolute top-[calc(50%-2.5rem)] left-1/2 z-10 hidden size-11 items-center justify-center rounded-full border bg-card text-primary shadow-lg lg:flex", m.arrow)}>
+          <ArrowRight className="size-5" />
+        </span>
       </div>
 
-      <div className="grid gap-px border-t bg-border md:grid-cols-3">
+      <div key={o.id} className="grid gap-px border-t bg-border md:grid-cols-3">
         <Panel title="Why it fits">
           <ul className="flex flex-col gap-2.5">
-            {reasonsFor(o, byId).map((e) => (
-              <li key={e.id}>
+            {reasonsFor(o, byId).map((e, i) => (
+              <li key={e.id} className={m.rise} style={delay(i + 2, 80)}>
                 <EvidenceLine e={e} onEvidence={onEvidence} />
               </li>
             ))}
@@ -131,8 +146,8 @@ export function Recommendation({
         </Panel>
         <Panel title="Watch out for" tone="warning">
           <ul className="flex flex-col gap-2.5">
-            {risksFor(o, a.evidence).map((r) => (
-              <li key={r.text}>
+            {risksFor(o, a.evidence).map((r, i) => (
+              <li key={r.text} className={m.rise} style={delay(i + 3, 80)}>
                 <button
                   type="button"
                   disabled={!r.evidenceId}
@@ -156,18 +171,48 @@ export function Recommendation({
 
 /* --------------------------------------------------------------- before */
 
-function CurrentSpace({ images, modelId, propertyId, suite }: { images: ResultImage[]; modelId: string | null; propertyId: number; suite: string | null }) {
+function CurrentSpace({
+  images,
+  hidden,
+  emptyView,
+  modelId,
+  propertyId,
+  suite,
+}: {
+  images: ResultImage[];
+  /** Scan photos left out because they show furniture. */
+  hidden: number;
+  /** The AI "furniture removed" view, shown first when furnished photos were hidden. */
+  emptyView: string | null;
+  modelId: string | null;
+  propertyId: number;
+  suite: string | null;
+}) {
   const [shown, setShown] = useState(0);
   const tour = modelId ? safeEmbedUrl(modelId) : null;
-  const scanned = images.length > 0;
-  // Only ever this property: its own interior photos, or its own aerial view if there is no scan.
-  const main: ResultImage = images[shown] ?? { src: `/api/imagery/vexcel/ortho?propertyId=${propertyId}`, alt: "Vexcel aerial image of this property", kind: "aerial", evidenceId: "" };
+  const name = suite ?? "The space";
+  // Only ever this property: its own bare scan photos, an AI view of its own photo with the
+  // furniture removed (first, whenever furnished photos were hidden), or its own aerial view.
+  const aerial: ResultImage = { src: `/api/imagery/vexcel/ortho?propertyId=${propertyId}`, alt: "Vexcel aerial image of this property", kind: "aerial", evidenceId: "" };
+  const empty: ResultImage | null = hidden > 0 && emptyView ? { src: emptyView, alt: `${name} with its furniture removed (AI view of a scan photo)`, kind: "scan", evidenceId: "" } : null;
+  const views = empty ? [empty, ...images] : images;
+  const main = views[shown] ?? aerial;
+  const isEmptyView = main === empty;
+  const scanned = views.length > 0;
+  const badge = isEmptyView ? "Today · AI view, furniture removed" : scanned ? "Today · Matterport 3D scan" : hidden > 0 ? "Aerial of this property" : "No interior scan · aerial of this property";
+  const caption = isEmptyView
+    ? "The scan photos show the current furniture, so this AI view of one of them takes it out. Open the 3D tour for the real space."
+    : scanned
+      ? `${name} as it is today, from its 3D scan.${hidden ? ` ${hidden} photo${hidden === 1 ? "" : "s"} with furniture hidden.` : ""}`
+      : hidden > 0
+        ? "Every scan photo shows the current furniture, so they are hidden. Open the 3D tour to look around."
+        : "This space has no 3D scan, so only the building is shown.";
 
   return (
-    <figure className="flex flex-col gap-2">
-      <Frame image={main} badge={scanned ? "Today · Matterport 3D scan" : "No interior scan · aerial of this property"} />
+    <figure className={cn("flex flex-col gap-2", m.swap)}>
+      <Frame image={main} badge={badge} drift />
       <figcaption className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm text-muted-foreground">{scanned ? `${suite ?? "The space"} as it is today, from its 3D scan.` : "This space has no 3D scan, so only the building is shown."}</span>
+        <span className="text-sm text-muted-foreground">{caption}</span>
         {tour && (
           <a href={tour} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border bg-background px-3 text-sm font-medium outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring">
             <Box className="size-4" aria-hidden="true" />
@@ -176,16 +221,19 @@ function CurrentSpace({ images, modelId, propertyId, suite }: { images: ResultIm
           </a>
         )}
       </figcaption>
-      {images.length > 1 && (
+      {views.length > 1 && (
         <ul className="grid grid-cols-5 gap-2" aria-label="More photos from the 3D scan">
-          {images.slice(0, 5).map((img, i) => (
-            <li key={img.src}>
+          {views.slice(0, 5).map((img, i) => (
+            <li key={img.src} className={m.rise} style={delay(i + 2, 60)}>
               <button
                 type="button"
                 onClick={() => setShown(i)}
                 aria-pressed={i === shown}
-                aria-label={`Show scan photo ${i + 1}`}
-                className={cn("relative block aspect-[4/3] w-full overflow-hidden rounded-lg border-2 outline-none focus-visible:ring-2 focus-visible:ring-ring", i === shown ? "border-primary" : "border-transparent opacity-80 hover:opacity-100")}
+                aria-label={img === empty ? "Show the AI view with furniture removed" : `Show scan photo ${i + 1}`}
+                className={cn(
+                  "relative block aspect-[4/3] w-full overflow-hidden rounded-lg border-2 outline-none transition-all duration-300 focus-visible:ring-2 focus-visible:ring-ring",
+                  i === shown ? "scale-[1.04] border-primary shadow-md" : "border-transparent opacity-75 hover:-translate-y-0.5 hover:opacity-100",
+                )}
               >
                 <Image src={img.src} alt="" fill unoptimized sizes="120px" className="object-cover" />
               </button>
@@ -199,7 +247,7 @@ function CurrentSpace({ images, modelId, propertyId, suite }: { images: ResultIm
 
 /* ---------------------------------------------------------------- after */
 
-function useConceptManifest(): ConceptManifest {
+export function useConceptManifest(): ConceptManifest {
   const [manifest, setManifest] = useState<ConceptManifest>({});
   useEffect(() => {
     let live = true;
@@ -218,7 +266,7 @@ function Concept({ o, manifest }: { o: Opportunity; manifest: ConceptManifest })
   const concept = conceptFor(o, manifest);
   if (!concept) {
     return (
-      <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/40 p-6 text-center">
+      <div className={cn("flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/40 p-6 text-center", m.swap)}>
         <ImageOff className="size-8 text-muted-foreground" aria-hidden="true" />
         <p className="text-base font-semibold">Concept preview coming soon</p>
         <p className="max-w-xs text-sm text-muted-foreground">An illustrative concept of this space as a {labelOf(o.useCategory).toLowerCase()} will appear here.</p>
@@ -227,7 +275,9 @@ function Concept({ o, manifest }: { o: Opportunity; manifest: ConceptManifest })
   }
   return (
     <figure className="flex flex-col gap-2">
-      <Frame image={{ src: concept.src, alt: `AI concept: this space as a ${labelOf(o.useCategory).toLowerCase()}`, kind: "scan", evidenceId: "" }} badge={`Could become · ${labelOf(o.useCategory)}`} accent />
+      <div className={m.becoming}>
+        <Frame image={{ src: concept.src, alt: `AI concept: this space as a ${labelOf(o.useCategory).toLowerCase()}`, kind: "scan", evidenceId: "" }} badge={`Could become · ${labelOf(o.useCategory)}`} accent />
+      </div>
       <figcaption className="flex items-start gap-1.5 text-sm leading-snug text-muted-foreground">
         <Sparkles className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden="true" />
         <span>
@@ -240,16 +290,29 @@ function Concept({ o, manifest }: { o: Opportunity; manifest: ConceptManifest })
 
 /* --------------------------------------------------------------- shared */
 
-function Frame({ image, badge, accent }: { image: ResultImage; badge: string; accent?: boolean }) {
+function Frame({ image, badge, accent, drift }: { image: ResultImage; badge: string; accent?: boolean; drift?: boolean }) {
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState<string | null>(null);
+  const ready = loaded === image.src;
   return (
-    <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted">
+    <div className={cn("relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-muted", !ready && !failed && m.shimmer, accent && ready && m.sweep)}>
       {!failed ? (
-        <Image key={image.src} src={image.src} alt={image.alt} fill unoptimized loading="eager" sizes="(min-width: 1024px) 600px, 100vw" className="object-cover" onError={() => setFailed(true)} />
+        <Image
+          key={image.src}
+          src={image.src}
+          alt={image.alt}
+          fill
+          unoptimized
+          loading="eager"
+          sizes="(min-width: 1024px) 600px, 100vw"
+          className={cn("object-cover", m.img, !ready && m.loading, drift && ready && m.drift)}
+          onLoad={() => setLoaded(image.src)}
+          onError={() => setFailed(true)}
+        />
       ) : (
         <span className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">Image unavailable</span>
       )}
-      <span className={cn("absolute top-3 left-3 rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur", accent ? "bg-amber-500/90 text-white" : "bg-scrim text-scrim-foreground")}>{badge}</span>
+      <span className={cn("absolute top-3 left-3 rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm backdrop-blur", m.rise, accent ? "bg-amber-500/90 text-white" : "bg-scrim text-scrim-foreground")}>{badge}</span>
     </div>
   );
 }
@@ -279,14 +342,20 @@ export function EvidenceLine({ e, onEvidence }: { e: Evidence; onEvidence: (id: 
 function MatchMeter({ o }: { o: Opportunity }) {
   const [open, setOpen] = useState(false);
   const score = o.scores.overall;
+  const counted = useCountUp(score);
+  const grown = useMounted();
   const known = SCORE_PARTS.filter(([k]) => o.scores[k].score !== null).length;
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-baseline gap-2">
-        <span className="text-4xl font-semibold tabular-nums">{score ?? "–"}</span>
+        <span className="text-4xl font-semibold tabular-nums" aria-label={score === null ? "Not scored" : `${score} out of 100`}>
+          {counted ?? "–"}
+        </span>
         <span className="text-sm text-muted-foreground">/ 100</span>
       </div>
-      <div className="h-2.5 overflow-hidden rounded-full bg-muted">{score !== null && <div className="h-full rounded-full bg-primary" style={{ width: `${score}%` }} />}</div>
+      <div className="h-2.5 overflow-hidden rounded-full bg-muted">
+        {score !== null && <div className={cn("h-full rounded-full bg-gradient-to-r from-primary/70 to-primary", m.bar)} style={{ width: grown ? `${score}%` : "0%" }} />}
+      </div>
       <p className="text-sm leading-snug text-muted-foreground">
         How well this space meets what a {labelOf(o.useCategory).toLowerCase()} typically needs. <span className="font-medium text-foreground">Not a forecast of business success.</span>
       </p>
@@ -296,15 +365,15 @@ function MatchMeter({ o }: { o: Opportunity }) {
       </button>
       {open && (
         <ul className="flex flex-col gap-2">
-          {SCORE_PARTS.map(([key, label]) => {
+          {SCORE_PARTS.map(([key, label], i) => {
             const s = o.scores[key].score;
             return (
-              <li key={key} className="flex flex-col gap-1">
+              <li key={key} className={cn("flex flex-col gap-1", m.rise)} style={delay(i, 60)}>
                 <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">{label}</span>
                   <span className="font-semibold tabular-nums">{s ?? "not checked"}</span>
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-muted">{s !== null && <div className="h-full rounded-full bg-primary/70" style={{ width: `${s}%` }} />}</div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted">{s !== null && <ScoreBar value={s} />}</div>
               </li>
             );
           })}
@@ -312,4 +381,9 @@ function MatchMeter({ o }: { o: Opportunity }) {
       )}
     </div>
   );
+}
+
+function ScoreBar({ value }: { value: number }) {
+  const grown = useMounted();
+  return <div className={cn("h-full rounded-full bg-primary/70", m.bar)} style={{ width: grown ? `${value}%` : "0%" }} />;
 }

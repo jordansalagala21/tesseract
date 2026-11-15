@@ -24,3 +24,12 @@ export function conceptFor(o: Pick<Opportunity, "propertyId" | "spaceId" | "useC
   const own = manifest[subjectOf(o)]?.[use];
   return own && SAFE.test(own) ? { src: own, scope: "space" } : null;
 }
+
+/**
+ * The AI "furniture removed" view of a space (empty.webp, same scan photo as the concepts), or
+ * null. Shown first when scan photos of the space were hidden for showing furniture.
+ */
+export function emptyViewFor(o: Pick<Opportunity, "propertyId" | "spaceId">, manifest: ConceptManifest = {}): string | null {
+  const src = manifest[subjectOf(o)]?.empty;
+  return src && SAFE.test(src) ? src : null;
+}

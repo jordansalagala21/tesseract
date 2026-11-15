@@ -9,8 +9,10 @@ import { EvidenceDrawer } from "./EvidenceDrawer";
 import { cleanStatement } from "./evidence-format";
 import { Recommendation } from "./Recommendation";
 import { MarketInsights, MatchCards, MoneySummary } from "./ResultSections";
-import { heroImageFor, observationsWithImages } from "./result-images";
+import { delay, motion, Reveal } from "./motion";
+import { furnishedPhotos, heroImageFor, observationsWithImages } from "./result-images";
 import { ScenarioControls } from "./ScenarioControls";
+import { cn } from "@/lib/utils";
 
 /**
  * The results, simplest first (progressive disclosure):
@@ -24,9 +26,11 @@ export function ResultsOverview({ analysis: a }: { analysis: AnalysisResponse })
   const [selected, setSelected] = useState(0);
   const open = (id: string) => id && setEvidenceId(id);
   const byId = new Map(a.evidence.map((e) => [e.id, e]));
-  const seen = observationsWithImages(a.evidence);
+  // Photos showing furniture are never shown: people want to see the bare space.
+  const hide = furnishedPhotos(a.evidence);
+  const seen = observationsWithImages(a.evidence, hide);
   const used = new Set<string>();
-  const cardImages = a.opportunities.map((o) => heroImageFor(o, byId, seen.map((s) => s.image), used));
+  const cardImages = a.opportunities.map((o) => heroImageFor(o, byId, seen.map((s) => s.image), used, hide));
   const o = a.opportunities[Math.min(selected, a.opportunities.length - 1)];
   const working = a.status === "queued" || a.status === "running";
 
@@ -35,11 +39,13 @@ export function ResultsOverview({ analysis: a }: { analysis: AnalysisResponse })
       {o && (
         <>
           <Recommendation analysis={a} selected={selected} onSelect={setSelected} onEvidence={open} />
-          <div className="grid gap-8 lg:grid-cols-2">
+          <Reveal className="grid gap-8 lg:grid-cols-2">
             <MoneySummary o={o} a={a} onEvidence={open} />
             <MarketInsights o={o} a={a} onEvidence={open} />
-          </div>
-          <MatchCards a={a} images={cardImages} selected={selected} onSelect={setSelected} onEvidence={open} />
+          </Reveal>
+          <Reveal>
+            <MatchCards a={a} images={cardImages} selected={selected} onSelect={setSelected} onEvidence={open} />
+          </Reveal>
         </>
       )}
 
@@ -48,25 +54,31 @@ export function ResultsOverview({ analysis: a }: { analysis: AnalysisResponse })
         (working && !o ? (
           <Gallery rows={seen} onEvidence={open} heading="What the AI is looking at" />
         ) : (
-          <Section id="details-photos" title={`All photos the AI reviewed (${seen.length})`}>
-            <Gallery rows={seen} onEvidence={open} />
-          </Section>
+          <Reveal>
+            <Section id="details-photos" title={`All photos the AI reviewed (${seen.length})`}>
+              <Gallery rows={seen} onEvidence={open} />
+            </Section>
+          </Reveal>
         ))}
 
       {a.financialScenarios.length > 0 && (
-        <Section id="details-financial" title="Detailed financial analysis">
-          <p className="mb-4 text-sm text-muted-foreground">Every number says where it came from: CoStar, you, or an app default. Change one and the result updates.</p>
-          <div className="flex flex-col gap-4">
-            {a.financialScenarios.map((s) => (
-              <ScenarioControls key={s.id} scenario={s} onEvidenceSelect={open} />
-            ))}
-          </div>
-        </Section>
+        <Reveal>
+          <Section id="details-financial" title="Detailed financial analysis">
+            <p className="mb-4 text-sm text-muted-foreground">Every number says where it came from: CoStar, you, or an app default. Change one and the result updates.</p>
+            <div className="flex flex-col gap-4">
+              {a.financialScenarios.map((s) => (
+                <ScenarioControls key={s.id} scenario={s} onEvidenceSelect={open} />
+              ))}
+            </div>
+          </Section>
+        </Reveal>
       )}
 
-      <Section id="details-evidence" title={`Technical evidence and agent trace (${a.toolCalls.length} steps · ${a.evidence.length} sources)`}>
-        <AnalysisResults analysis={{ ...a, financialScenarios: [] }} />
-      </Section>
+      <Reveal>
+        <Section id="details-evidence" title={`Technical evidence and agent trace (${a.toolCalls.length} steps · ${a.evidence.length} sources)`}>
+          <AnalysisResults analysis={{ ...a, financialScenarios: [] }} />
+        </Section>
+      </Reveal>
 
       <EvidenceDrawer open={evidenceId !== null} onClose={() => setEvidenceId(null)} evidence={a.evidence} evidenceIndex={a.evidenceIndex} selectedId={evidenceId} />
     </div>
@@ -75,7 +87,7 @@ export function ResultsOverview({ analysis: a }: { analysis: AnalysisResponse })
 
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
-    <details id={id} className="group scroll-mt-6 rounded-2xl border bg-card">
+    <details id={id} className="group scroll-mt-6 rounded-2xl border bg-card transition-shadow hover:shadow-md">
       <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-base font-semibold sm:px-5">
         {title}
         <ChevronDown className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
@@ -95,11 +107,11 @@ function Gallery({ rows, onEvidence, heading }: { rows: ReturnType<typeof observ
         </div>
       )}
       <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-        {rows.map(({ e, image }) => (
-          <li key={e.id}>
-            <button type="button" onClick={() => onEvidence(e.id)} className="flex w-full flex-col overflow-hidden rounded-xl border bg-card text-left outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <span className="relative block aspect-[4/3] bg-muted">
-                <Image src={image.src} alt={image.alt} fill unoptimized sizes="(min-width: 1024px) 300px, 50vw" className="object-cover" />
+        {rows.map(({ e, image }, i) => (
+          <li key={e.id} className={motion.rise} style={delay(i, 60)}>
+            <button type="button" onClick={() => onEvidence(e.id)} className={cn("flex h-full w-full flex-col overflow-hidden rounded-xl border bg-card text-left outline-none focus-visible:ring-2 focus-visible:ring-ring", motion.lift)}>
+              <span className="relative block aspect-[4/3] overflow-hidden bg-muted">
+                <Image src={image.src} alt={image.alt} fill unoptimized sizes="(min-width: 1024px) 300px, 50vw" className={cn("object-cover", motion.zoom)} />
               </span>
               <span className="flex flex-col gap-1 p-3">
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">

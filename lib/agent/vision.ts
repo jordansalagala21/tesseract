@@ -80,6 +80,10 @@ const InteriorResult = z.object({
     }),
   ),
   notObserved: z.array(z.string()).describe("Notable features you looked for but could not see, e.g. 'No commercial kitchen visible'"),
+  furnishedImageIndexes: z
+    .array(z.number())
+    .describe("Images (0-based, photos or floor plans) that show loose furniture or someone's belongings: tables, chairs, booths, desks, sofas, shelving with stock, decor. Built-in fixtures alone (counters, sinks, kitchen equipment) do not count.")
+    .default([]),
 });
 
 const EXTERIOR_TAGS = ["surface_parking", "corner_location", "street_frontage", "adjacent_retail", "adjacent_residential", "adjacent_office", "rooftop_equipment", "other"] as const;
@@ -113,7 +117,7 @@ export function violatesVisionRules(statement: string): boolean {
 
 const INTERIOR_PROMPT = `You are looking at photos (and possibly a floor plan) of an advertised commercial space, to help judge what businesses could use it.
 Report only what is clearly visible: existing build-out (kitchen equipment, hood, bar counter, restrooms, private offices, exam rooms), the layout (open floor or partitioned), the ceiling (exposed and high-looking, or dropped), storefront glazing, and condition in plain words.
-Rules: no measurements, sizes, distances or counts with units; no code, ADA, zoning, permit or structural judgements; do not guess what you cannot see. Use low confidence when unsure. List important features you looked for but could not see under notObserved. Never use the word "vacant" (say "empty" or "unoccupied-looking" for rooms): Tesseract never calls space vacant.`;
+Rules: no measurements, sizes, distances or counts with units; no code, ADA, zoning, permit or structural judgements; do not guess what you cannot see. Use low confidence when unsure. List important features you looked for but could not see under notObserved. Under furnishedImageIndexes list every image (photo, overview or floor plan) that shows loose furniture or belongings (tables, chairs, booths, desks, sofas, stocked shelving, decor); a bare room with only built-in fixtures is not furnished. When in doubt, include the photo. Never use the word "vacant" (say "empty" or "unoccupied-looking" for rooms): Tesseract never calls space vacant.`;
 
 const EXTERIOR_PROMPT = `You are looking at aerial images (top-down and/or oblique) of a commercial property, to judge site access for new businesses.
 Report only what is clearly visible: surface parking next to the building, whether it sits on a street corner, street frontage, and what kinds of buildings are next to it (retail, residential, office).
@@ -215,6 +219,26 @@ function notObservedEvidence(notes: string[], images: VisionImage[], opts: Visio
     }));
 }
 
+/**
+ * One observation listing the photos that show furniture or belongings, id `<prefix>_furnished`.
+ * The results page uses it to keep those photos out of view: users want to see the bare space.
+ */
+function furnishedEvidence(indexes: number[], images: VisionImage[], opts: VisionOptions, caveat: string): EvidenceDraft[] {
+  const idx = [...new Set(indexes.filter((i) => Number.isInteger(i) && i >= 0 && i < images.length && !images[i].kind.startsWith("aerial")))].sort((a, b) => a - b);
+  if (idx.length === 0) return [];
+  return [
+    {
+      kind: "ai_observation",
+      id: `${opts.idPrefix}_furnished`,
+      statement: `${idx.length === 1 ? "One scan image shows" : `${idx.length} scan images show`} furniture or belongings from the space's current fit-out.`,
+      model: opts.model,
+      confidence: "medium",
+      caveat: `${caveat} Furniture shown in photos may not stay with the space.`,
+      sources: idx.map((i) => images[i].source),
+    },
+  ];
+}
+
 const INTERIOR_CAVEAT = "AI observation from Matterport imagery. Not a measurement, inspection, or code, ADA or zoning determination.";
 const EXTERIOR_CAVEAT = "AI observation from Vexcel aerial imagery. Not a survey, measurement, or code or zoning determination.";
 
@@ -234,7 +258,11 @@ export async function analyzeInteriorImages(images: VisionImage[], subject: stri
   const tags = [...new Set(buildOut.map((b) => b.value.replace(/_/g, " ")))];
   return {
     summary: `${kept.length} observation${kept.length === 1 ? "" : "s"} from ${used.length} image${used.length === 1 ? "" : "s"}${tags.length ? `: ${tags.join(", ")}` : ""}${dropped ? ` (${dropped} dropped by the vision rules)` : ""}`,
-    evidence: [...kept.map((k) => k.draft), ...notObservedEvidence(result.notObserved, used, opts, INTERIOR_CAVEAT)],
+    evidence: [
+      ...kept.map((k) => k.draft),
+      ...notObservedEvidence(result.notObserved, used, opts, INTERIOR_CAVEAT),
+      ...furnishedEvidence(result.furnishedImageIndexes, used, opts, INTERIOR_CAVEAT),
+    ],
     facts: { [subject]: facts },
   };
 }

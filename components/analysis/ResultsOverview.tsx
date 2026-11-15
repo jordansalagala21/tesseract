@@ -10,6 +10,7 @@ import { EvidenceDrawer } from "./EvidenceDrawer";
 import { cleanStatement } from "./evidence-format";
 import { SCORE_PARTS, STRATEGIES, VERDICTS } from "./opportunity-format";
 import { heroImageFor, imagesFor, observationsWithImages, reasonsFor, type ResultImage } from "./result-images";
+import { SpacePotential } from "./SpacePotential";
 
 /**
  * The visual summary of an analysis: the top idea as a large card with a photo of the space,
@@ -18,6 +19,11 @@ import { heroImageFor, imagesFor, observationsWithImages, reasonsFor, type Resul
  */
 export function ResultsOverview({ analysis: a }: { analysis: AnalysisResponse }) {
   const [selected, setSelected] = useState<string | null>(null);
+  const [preview, setPreview] = useState(0);
+  const showIdea = (index: number) => {
+    setPreview(index);
+    document.getElementById("space-potential")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   const byId = new Map(a.evidence.map((e) => [e.id, e]));
   const seen = observationsWithImages(a.evidence);
   const pool = seen.map((s) => s.image);
@@ -31,6 +37,8 @@ export function ResultsOverview({ analysis: a }: { analysis: AnalysisResponse })
 
   return (
     <div className="flex flex-col gap-10">
+      {ideas.length > 0 && <SpacePotential analysis={a} selected={preview} onSelect={setPreview} onEvidence={open} />}
+
       {ideas.length > 0 && (
         <section aria-labelledby="ideas-heading" className="flex flex-col gap-4">
           <h2 id="ideas-heading" className="text-xl font-semibold tracking-tight">
@@ -47,7 +55,7 @@ export function ResultsOverview({ analysis: a }: { analysis: AnalysisResponse })
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {ideas.slice(1).map(({ o, image }) => (
                 <li key={o.id}>
-                  <IdeaCard o={o} image={image} byId={byId} onEvidence={open} hideGap={!!sharedGap} />
+                  <IdeaCard o={o} image={image} byId={byId} onEvidence={open} hideGap={!!sharedGap} onPreview={() => showIdea(a.opportunities.indexOf(o))} previewing={a.opportunities.indexOf(o) === preview} />
                 </li>
               ))}
             </ul>
@@ -165,7 +173,7 @@ function Reasons({ o, byId, onEvidence, max = 3, hideGap }: { o: Opportunity; by
   );
 }
 
-type CardProps = { o: Opportunity; image: ResultImage | null; byId: Map<string, Evidence>; onEvidence: (id: string) => void; hideGap?: boolean };
+type CardProps = { o: Opportunity; image: ResultImage | null; byId: Map<string, Evidence>; onEvidence: (id: string) => void; hideGap?: boolean; onPreview?: () => void; previewing?: boolean };
 
 /** "based on 3 of 4 scores": the overall re-weights over what is known, so say how much that is. */
 const basis = (o: Opportunity) => {
@@ -199,7 +207,7 @@ function TopIdea({ o, image, byId, onEvidence, hideGap }: CardProps) {
   );
 }
 
-function IdeaCard({ o, image, byId, onEvidence, hideGap }: CardProps) {
+function IdeaCard({ o, image, byId, onEvidence, hideGap, onPreview, previewing }: CardProps) {
   const verdict = VERDICTS[o.verdict];
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-2xl border bg-card">
@@ -215,6 +223,16 @@ function IdeaCard({ o, image, byId, onEvidence, hideGap }: CardProps) {
         <h3 className="line-clamp-2 text-base leading-snug font-semibold">{o.title}</h3>
         <Meter score={o.scores.overall} label={basis(o)} />
         <Reasons o={o} byId={byId} onEvidence={onEvidence} max={2} hideGap={hideGap} />
+        {onPreview && (
+          <button
+            type="button"
+            onClick={onPreview}
+            aria-pressed={previewing}
+            className="mt-auto inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border text-sm font-medium outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-primary aria-pressed:text-primary"
+          >
+            {previewing ? "Shown above" : "See it in the space"}
+          </button>
+        )}
       </div>
     </article>
   );

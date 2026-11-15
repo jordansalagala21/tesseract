@@ -314,3 +314,72 @@ h2 {
 @media (prefers-reduced-motion: reduce) {
   .animate-stage-enter, .animate-stage-bob, .animate-stage-blink, .animate-stage-wave, .animate-stage-hop { animation: none; }
 }
+
+/* The Tesseract cube (components/intake/TesseractCube.tsx): a glass cube with a smaller cube
+   turning inside it, pure CSS 3D. --s is its size. Its blue is the cube's own glow, used nowhere
+   else, so the site keeps one accent colour. Still with reduced motion. */
+:root { --cube: #3d7bff; }
+.dark { --cube: #6b9bff; }
+.tcube { --s: 160px; position: relative; width: var(--s); height: var(--s); perspective: calc(var(--s) * 5); }
+.tcube-glow {
+  position: absolute; inset: -40%; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--cube) 34%, transparent), transparent);
+  animation: tcube-breathe 3.2s ease-in-out infinite;
+}
+.tcube-body, .tcube-inner { position: absolute; transform-style: preserve-3d; }
+.tcube-body { --h: calc(var(--s) / 2); inset: 0; animation: tcube-spin 16s linear infinite; }
+.tcube-inner { --h: calc(var(--s) / 4); inset: 25%; animation: tcube-spin-in 10s linear infinite; }
+.tcube-face {
+  position: absolute; inset: 0;
+  border: 1.5px solid color-mix(in srgb, var(--cube) 80%, white);
+  background: color-mix(in srgb, var(--cube) 7%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--cube) 55%, transparent), inset 0 0 22px color-mix(in srgb, var(--cube) 30%, transparent);
+}
+.tcube-inner .tcube-face { background: color-mix(in srgb, var(--cube) 18%, transparent); }
+.tcube-front { transform: translateZ(var(--h)); }
+.tcube-back { transform: rotateY(180deg) translateZ(var(--h)); }
+.tcube-right { transform: rotateY(90deg) translateZ(var(--h)); }
+.tcube-left { transform: rotateY(-90deg) translateZ(var(--h)); }
+.tcube-top { transform: rotateX(90deg) translateZ(var(--h)); }
+.tcube-bottom { transform: rotateX(-90deg) translateZ(var(--h)); }
+@keyframes tcube-spin { from { transform: rotateX(-24deg) rotateY(0deg); } to { transform: rotateX(-24deg) rotateY(360deg); } }
+@keyframes tcube-spin-in { from { transform: rotateX(30deg) rotateY(360deg) rotateZ(20deg); } to { transform: rotateX(30deg) rotateY(0deg) rotateZ(20deg); } }
+@keyframes tcube-breathe { 0%, 100% { opacity: 0.7; transform: scale(0.96); } 50% { opacity: 1; transform: scale(1.04); } }
+@keyframes tcube-talk { 0% { transform: scale(1); } 35% { transform: scale(1.08); } 100% { transform: scale(1); } }
+.tcube[data-mode="talk"] { animation: tcube-talk 0.5s ease-out 1; }
+.tcube[data-mode="work"] .tcube-body { animation-duration: 5s; }
+.tcube[data-mode="work"] .tcube-inner { animation-duration: 3s; }
+.tcube[data-mode="work"] .tcube-glow { animation-duration: 1.4s; }
+@media (prefers-reduced-motion: reduce) {
+  .tcube, .tcube-glow, .tcube-body, .tcube-inner { animation: none !important; }
+  .tcube-body { transform: rotateX(-24deg) rotateY(38deg); }
+  .tcube-inner { transform: rotateX(30deg) rotateY(-20deg); }
+}
+
+/* Intake stage (components/intake/GuidedIntake.tsx): the cube slides in from the right, and
+   glides to the centre when the person starts the agents. */
+@keyframes intake-enter {
+  0% { transform: translateX(60vw) scale(0.6); opacity: 0; }
+  70% { transform: translateX(-12px) scale(1.03); opacity: 1; }
+  100% { transform: none; }
+}
+.animate-intake-enter { animation: intake-enter 0.9s cubic-bezier(0.2, 0.8, 0.25, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-intake-enter { animation: none; }
+}
+
+/* Agent loading screen (components/intake/AgentFlow.tsx): the line between an agent and the cube.
+   Faint while the agent waits, dashes running toward the cube while it works, solid when done. */
+.flow-line { height: 2px; width: 2.5rem; flex-shrink: 0; background: var(--border); }
+.flow-line[data-state="running"] {
+  background: repeating-linear-gradient(90deg, var(--cube) 0 8px, transparent 8px 14px);
+  background-size: 14px 2px;
+  animation: flow-dash 0.6s linear infinite;
+}
+.flow-line-in[data-state="running"] { animation-direction: reverse; }
+.flow-line[data-state="done"] { background: color-mix(in srgb, var(--cube) 70%, transparent); }
+.flow-line[data-state="failed"] { background: color-mix(in srgb, var(--destructive) 50%, transparent); }
+@keyframes flow-dash { from { background-position: 0 0; } to { background-position: 14px 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .flow-line[data-state="running"] { animation: none; }
+}

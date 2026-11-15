@@ -54,6 +54,8 @@ const now = () => new Date().toISOString();
 const costar = (dataset: string, recordId: number | string, field: string): SourceRef[] => [
   { system: "costar", dataset, recordId: String(recordId), field, retrievedAt: now() },
 ];
+/** "GeneralRetail" → "general retail", "Freestanding" → "freestanding". */
+const humanize = (code: string) => code.replace(/_/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
 const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 
 /** "FirstFloor"/"Ground" → true, other floors → false, anything else → unknown. */
@@ -111,7 +113,8 @@ export function profileOutput(
   const add = (d: EvidenceDraft) => (evidence.push(d), d.id!);
   const where = [property.address.street, property.address.city].filter(Boolean).join(", ");
 
-  add({ id: `ev_p${pid}_type`, kind: "verified_fact", statement: `${where} is a ${property.propertyType}${property.propertySubtype ? ` (${property.propertySubtype})` : ""} building in CoStar`, value: property.propertyType, sources: costar(P, pid, "propertyType") });
+  const subtype = property.propertySubtype?.replace(new RegExp(`^${property.propertyType}_?`), "");
+  add({ id: `ev_p${pid}_type`, kind: "verified_fact", statement: `${where} is a ${humanize(property.propertyType)}${subtype ? ` (${humanize(subtype)})` : ""} building in CoStar`, value: property.propertyType, sources: costar(P, pid, "propertyType") });
   if (property.rentableAreaSf) add({ id: `ev_p${pid}_rba`, kind: "verified_fact", statement: `Building rentable area is ${fmt(property.rentableAreaSf)} SF`, value: property.rentableAreaSf, unit: "SF", sources: costar(P, pid, "rentableBuildingArea") });
   if (property.yearBuilt) add({ id: `ev_p${pid}_built`, kind: "verified_fact", statement: `Built in ${property.yearBuilt}${property.yearRenovated ? `, renovated ${property.yearRenovated}` : ""}`, value: property.yearBuilt, sources: costar(P, pid, "yearBuilt") });
   if (property.zoningDescription) add({ id: `ev_p${pid}_zoning`, kind: "verified_fact", statement: `CoStar's zoning field reads "${property.zoningDescription}" (a record, not a permitted-use determination)`, value: property.zoningDescription, sources: costar(P, pid, "zoningDescription") });
@@ -179,7 +182,7 @@ export function profileOutput(
   if (Object.keys(byUse).length) market[prop] = { byUse };
 
   return {
-    summary: `${where}: ${property.propertyType}, ${spaces.length} advertised space${spaces.length === 1 ? "" : "s"}, ${tenants.length} tenant${tenants.length === 1 ? "" : "s"}`,
+    summary: `${where}: ${humanize(property.propertyType)}, ${spaces.length} advertised space${spaces.length === 1 ? "" : "s"}, ${tenants.length} tenant${tenants.length === 1 ? "" : "s"}`,
     evidence,
     facts,
     market,

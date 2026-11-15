@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DoorClosed, Users } from "lucide-react";
 import { EmptyState } from "@/components/ui/states";
+import { AnalyzeSpaceButton } from "@/components/analysis/AnalyzeSpaceButton";
 import type { AvailableSpace, Property } from "@/lib/contracts";
 import { PropertyDetailResponse } from "@/lib/contracts";
 import type { z } from "zod";
@@ -102,6 +103,9 @@ export function SpaceList({ spaces, note }: { spaces: AvailableSpace[]; note: st
                       )}
                       {s.floorPlanImageUrl && <Chip>Floor plan</Chip>}
                       {s.availabilityStatus === "lease_pending" && <Chip>Lease pending</Chip>}
+                    </div>
+                    <div className="mt-3">
+                      <AnalyzeSpaceButton propertyId={s.propertyId} spaceId={s.id} label={`Analyze ${s.suite ? `Suite ${s.suite}` : "this space"}`} />
                     </div>
                   </div>
                   <p className={rent ? "shrink-0 text-lg font-semibold tabular-nums" : "shrink-0 text-base text-muted-foreground"}>

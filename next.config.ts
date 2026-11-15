@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     rules: {
       "*.css": {
+        // Tailwind processes global stylesheets only. Re-labelling a *.module.css file as plain
+        // "*.css" would strip its CSS-module behaviour (unhashed classes, empty imports).
+        condition: { not: { path: /\.module\.css$/ } },
         loaders: ["@tailwindcss/turbopack"],
         as: "*.css",
       },

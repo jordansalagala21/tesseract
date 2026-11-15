@@ -1,15 +1,19 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
-import { StageInvest } from "@/components/forms/StageInvest";
+import { InvestorForm } from "@/components/forms/InvestorForm";
+import { IntakeOrForm } from "@/components/intake/IntakeOrForm";
 import { PageShell } from "@/components/site/PageShell";
 
-export const metadata: Metadata = { title: "I have capital | Tesseract" };
+export const metadata: Metadata = { title: "Build my investment brief | Tesseract" };
 
-// A deliberately empty page: Tess slides in and asks the questions one at a time.
-export default function InvestPage() {
+// The investor's page: the Tesseract asks about capital, strategy and risk, then starts the agents.
+export default function InvestPage({ searchParams }: PageProps<"/invest">) {
   return (
     <PageShell>
-      <h1 className="sr-only">I have capital: find buildings to buy and spaces to lease</h1>
-      <StageInvest />
+      <h1 className="sr-only">Build my investment brief: buildings to buy and spaces to lease</h1>
+      <Suspense>
+        <IntakeOrForm persona="investor" path="/invest" searchParams={searchParams} form={<InvestorForm />} />
+      </Suspense>
     </PageShell>
   );
 }

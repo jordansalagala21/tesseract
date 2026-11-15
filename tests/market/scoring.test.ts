@@ -219,3 +219,40 @@ describe("industry-group market signal", () => {
     expect(m.evidenceIds).toEqual(["ev_ind"]);
   });
 });
+
+describe("owners: overall without economics (economicOptional)", () => {
+  // Travis Suite 100 facts with no budget and no comparable rent: economics is unknown.
+  const base = { use: "fitness_studio" as const, site: travis };
+
+  it("keeps the strict rule by default", () => {
+    const r = scoreUse(base);
+    expect(r.scores.economic.score).toBeNull();
+    expect(r.scores.overall).toBeNull();
+    expect(r.verdict).toBe("insufficient_evidence");
+  });
+
+  it("forms the overall from the known components and says economics was not assessed", () => {
+    const r = scoreUse({ ...base, economicOptional: true });
+    expect(r.scores.overall).not.toBeNull();
+    expect(r.notes.join(" ")).toMatch(/Economics not assessed .* capped at "possible"/);
+  });
+
+  it("caps the verdict at possible, however high the overall", () => {
+    const r = scoreUse({ ...base, economicOptional: true });
+    expect(r.scores.overall!).toBeGreaterThanOrEqual(70);
+    expect(r.verdict).toBe("possible");
+    expect(verdictFor(90, [], { economicKnown: false })).toBe("possible");
+    expect(verdictFor(90, [], { economicKnown: true })).toBe("promising");
+  });
+
+  it("still requires physical fit", () => {
+    const r = scoreUse({ use: "cafe", site: {}, economicOptional: true });
+    expect(r.scores.overall).toBeNull();
+    expect(r.verdict).toBe("insufficient_evidence");
+  });
+
+  it("changes nothing once economics is known", () => {
+    const withBudget = { ...base, preferences: { maxRentPsfYear: fact(50) } };
+    expect(scoreUse({ ...withBudget, economicOptional: true })).toEqual(scoreUse(withBudget));
+  });
+});

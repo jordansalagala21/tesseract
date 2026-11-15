@@ -8,6 +8,9 @@
  *  - A component with no usable factors is `null` ("insufficient evidence").
  *  - `overall` is a weighted mean of the non-null components, and only when physical AND economic
  *    are both known. Weights are re-normalized over the components used, and the result says so.
+ *    Exception (`economicOptional`, used for owners): an owner has no budget, so when no comparable
+ *    rent exists either, overall is formed without economics, the gap is stated, and the verdict
+ *    is capped at "possible": nothing is called promising without the numbers.
  *  - Hard blockers (e.g. a use that needs a ground floor on an upper floor) cap the verdict.
  */
 import type { Opportunity } from "@/lib/contracts";
@@ -67,6 +70,8 @@ export interface ScoreInput {
   market?: MarketSignals;
   preferences?: UserPreferences;
   weights?: Partial<Weights>;
+  /** Allow an overall score without economic evidence (owners). The verdict is then capped at "possible". */
+  economicOptional?: boolean;
 }
 
 /* ----------------------------------------------------------------- outputs */
@@ -290,10 +295,11 @@ export function normalizeWeights(partial?: Partial<Weights>): Weights {
   return { physical: (w.physical / total) * 100, market: (w.market / total) * 100, access: (w.access / total) * 100, economic: (w.economic / total) * 100 };
 }
 
-export function verdictFor(overall: number | null, blockers: Blocker[]): Opportunity["verdict"] {
+export function verdictFor(overall: number | null, blockers: Blocker[], opts: { economicKnown?: boolean } = {}): Opportunity["verdict"] {
   if (overall === null) return "insufficient_evidence";
   const hard = blockers.some((b) => b.hard);
-  if (overall >= 70 && !hard) return "promising";
+  // Without economic evidence nothing is "promising": the best it can be is "possible".
+  if (overall >= 70 && !hard) return opts.economicKnown === false ? "possible" : "promising";
   if (overall >= 50 && !hard) return "possible";
   if (overall >= 70 && hard) return "possible";
   return "unlikely";
@@ -313,9 +319,13 @@ export function scoreUse(input: ScoreInput): ScoreResult {
   };
 
   let overall: number | null = null;
-  if (comps.physical.score === null || comps.economic.score === null) {
+  const economicKnown = comps.economic.score !== null;
+  if (comps.physical.score === null) {
+    notes.push("Overall not scored: physical fit is required.");
+  } else if (!economicKnown && !input.economicOptional) {
     notes.push("Overall not scored: physical fit and economic fit are both required.");
   } else {
+    if (!economicKnown) notes.push(`Economics not assessed (${comps.economic.rationale.replace(/^Insufficient evidence: /, "")}), so the verdict is capped at "possible".`);
     const used = (Object.keys(comps) as (keyof Weights)[]).filter((k) => comps[k].score !== null && weightsUsed[k] > 0);
     const totalW = used.reduce((s, k) => s + weightsUsed[k], 0);
     overall = totalW > 0 ? round(used.reduce((s, k) => s + (comps[k].score as number) * weightsUsed[k], 0) / totalW) : null;
@@ -326,7 +336,7 @@ export function scoreUse(input: ScoreInput): ScoreResult {
   return {
     use: input.use,
     scores: { ...comps, overall },
-    verdict: verdictFor(overall, blockers),
+    verdict: verdictFor(overall, blockers, { economicKnown }),
     blockers,
     notes,
     weightsUsed,

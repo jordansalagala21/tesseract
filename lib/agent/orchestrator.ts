@@ -128,6 +128,11 @@ function buildOpportunities(report: ReportInput | null, state: AgentState, reque
 
     seen.add(key);
     const checks = USES[o.useCategory].keyChecks.filter((c) => !o.unknowns.some((u) => u.toLowerCase() === c.toLowerCase()));
+    // An overall formed without economics says so first, where the owner will read it.
+    const economicGap =
+      scored.scores.overall !== null && scored.scores.economic.score === null
+        ? [`Economics not assessed: ${scored.scores.economic.rationale.replace(/^Insufficient evidence: /, "")} The verdict is capped at "possible" until rent evidence exists.`]
+        : [];
     built.push({
       id: "",
       rank: 1,
@@ -141,7 +146,7 @@ function buildOpportunities(report: ReportInput | null, state: AgentState, reque
       scores: scored.scores,
       supportingEvidenceIds: supporting,
       blockers: scored.blockers.map(({ description, evidenceIds }) => ({ description, evidenceIds })),
-      unknowns: [...o.unknowns, ...checks],
+      unknowns: [...economicGap, ...o.unknowns, ...checks],
       likelyChanges: o.likelyChanges,
       nextSteps: o.nextSteps,
       financialScenarioIds: o.financialScenarioIds.filter((id) => scenarioIds.has(id)),
@@ -236,6 +241,7 @@ export async function runAnalysis(opts: RunOptions): Promise<AnalysisResponse> {
   const publish = () => opts.onUpdate?.(snapshot("running"));
 
   state.weights = personaWeights(request.input);
+  state.economicOptional = request.input.persona === "owner";
   seedStandingGaps(state);
   seedUserEvidence(request, state);
   const tools = toolDefinitions(toolsFor(request));

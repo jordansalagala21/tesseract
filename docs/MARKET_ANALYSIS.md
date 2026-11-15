@@ -55,7 +55,7 @@ Each use defines requirements with an evidence type:
 | Plumbing / kitchen evidence | Matterport room class "Kitchen"/"Bathroom" (fact), vision (observation) |
 | Open floor plate | room count, room dimensions, vision |
 | Parking / access | `parkingRatio` and frontage curb cuts (facts), Vexcel vision (observation) |
-| Rent tolerance | user budget or the use's typical tolerance. The default is labelled; we never claim it as market data. |
+| Rent tolerance | user budget, or comparable asking rents on the same lease type and use. No per-use default tolerance: that would be an invented rent. |
 
 ## 4. Deterministic score (`lib/market/scoring.ts`)
 
@@ -69,6 +69,7 @@ Four components, each 0–100 or **null**:
 | Economic fit | 20% | Asking rent vs budget or use tolerance, occupancy cost from the lease scenario |
 
 - `overall` = weighted mean, **only if** physical and economic are non-null. Re-normalize the weights over the non-null components and say so.
+  - **Owner exception:** an owner has no budget, and many sites have no comparable rent on the same lease type (2600 Travis has none for retail). For owners, `overall` is formed without economics, the opportunity's first unknown says "Economics not assessed: …", and the verdict is **capped at `possible`**. Nothing is called promising without rent evidence. Investors and business starters keep the strict rule.
 - **Blockers** (e.g. permitted use unverified, no ground floor for retail) sit outside the score and are always shown.
 - `verdict`:
   - `promising` if overall ≥ 70 with no hard blockers

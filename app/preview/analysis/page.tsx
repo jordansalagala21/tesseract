@@ -145,7 +145,7 @@ export default function AnalysisPreviewPage() {
         <Notice title="Sample data">Step 1 and the first ranked use are the 2600 Travis St development fixture. Steps 2 to 7 and the “Example” acquisition card are example states for checking the design, and the buying scenario uses a made-up price. None of this is live agent output.</Notice>
         <div className="flex flex-col gap-3">
           <p className="text-base font-medium text-muted-foreground">Agent loading screen, with the sample steps above (owner)</p>
-          <AgentFlow persona="owner" toolCalls={[...a.toolCalls, ...uiStateSteps]} />
+          <AgentFlow persona="owner" status="running" toolCalls={[...a.toolCalls, ...uiStateSteps]} />
         </div>
         <AnalysisResults analysis={{ ...a, status: "running", toolCalls: [...a.toolCalls, ...uiStateSteps] }} />
         <div className="flex flex-col gap-3">

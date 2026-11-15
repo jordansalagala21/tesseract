@@ -1,8 +1,8 @@
 import { Box, Building2, Check, Circle, ListChecks, Loader2, MapPinned, Plane, Search, X } from "lucide-react";
-import type { AgentToolCall, UserPersona } from "@/lib/contracts";
+import type { AgentToolCall, AnalysisResponse, UserPersona } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
-import { flowRows, type FlowRow, type FlowSource } from "./agent-flow";
-import { TesseractCube } from "./TesseractCube";
+import { flowRows, orbStatus, type FlowRow, type FlowSource } from "./agent-flow";
+import { DotOrb } from "./DotOrb";
 
 const ICONS: Record<FlowSource, typeof Box> = {
   CoStar: Building2,
@@ -16,20 +16,20 @@ const ICONS: Record<FlowSource, typeof Box> = {
 const STATE_TEXT = { waiting: "Waiting", running: "Working", done: "Done", failed: "Didn’t finish" } as const;
 
 /**
- * The agent loading screen: the Tesseract works in the centre and the agents for this customer
- * type sit around it, joined by lines that carry data in while each one works. Every node moves
+ * The agent loading screen: the status orb works in the centre and the agents for this customer
+ * type sit around it, joined by lines that carry data in while each one works. The orb shows rings while a tool
+ * runs and bubbles while the model reasons between tools. Every node moves
  * only when the real agent reports that step (see agent-flow.ts).
  */
-export function AgentFlow({ persona, toolCalls }: { persona: UserPersona; toolCalls: AgentToolCall[] }) {
+export function AgentFlow({ persona, status, toolCalls }: { persona: UserPersona; status: AnalysisResponse["status"]; toolCalls: AgentToolCall[] }) {
   const rows = flowRows(persona, toolCalls);
   const half = Math.ceil(rows.length / 2);
 
   return (
     <section aria-label="The agents at work" className="rounded-3xl border bg-card/60 px-4 py-8 sm:px-8">
       <div className="grid items-center gap-6 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-0">
-        <div className="flex justify-center p-8 md:order-2 md:px-10">
-          {/* Padding: a turning cube's corners reach past its box. */}
-          <TesseractCube size={200} mode="work" />
+        <div className="flex justify-center md:order-2 md:px-2">
+          <DotOrb status={orbStatus(status, toolCalls)} size={264} />
         </div>
         <ol className="flex flex-col gap-4 md:order-1">
           {rows.slice(0, half).map((r) => (

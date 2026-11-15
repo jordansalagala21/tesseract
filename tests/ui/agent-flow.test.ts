@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AgentToolName, UserPersona, type AgentToolCall } from "@/lib/contracts";
-import { FLOWS, flowRows } from "@/components/intake/agent-flow";
+import { FLOWS, flowRows, orbStatus } from "@/components/intake/agent-flow";
 
 const call = (tool: AgentToolCall["tool"], status: AgentToolCall["status"], extra: Partial<AgentToolCall> = {}): AgentToolCall => ({
   id: `${tool}-${status}`,
@@ -41,5 +41,13 @@ describe("agent loading screen", () => {
 
   it("starts with every node waiting", () => {
     expect(flowRows("investor", []).every((r) => r.state === "waiting")).toBe(true);
+  });
+
+  it("maps the agent's real state onto the orb's four states", () => {
+    expect(orbStatus("queued", [])).toBe("thinking");
+    expect(orbStatus("running", [call("get_property_profile", "succeeded")])).toBe("thinking");
+    expect(orbStatus("running", [call("get_property_profile", "succeeded"), call("get_matterport_model", "running")])).toBe("working");
+    expect(orbStatus("completed", [call("score_uses", "succeeded")])).toBe("success");
+    expect(orbStatus("failed", [call("get_matterport_model", "running")])).toBe("stuck");
   });
 });

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { buildInput, fillAsk, nextOpen, parseNumber, skipped } from "./intake-logic";
 import { SCRIPTS, type Answer, type Answers, type Question } from "./questions";
-import { TesseractCube } from "./TesseractCube";
+import { DotOrb } from "./DotOrb";
 
 const ENTER_MS = 900;
 const TYPE_MS = 600;
@@ -81,7 +81,8 @@ export function GuidedIntake({ persona, alternative }: { persona: UserPersona; a
   const say = done ? script.outro : fillAsk(q.ask, answers);
 
   return (
-    <div className="flex flex-col gap-6">
+    // overflow-x-clip: the orb slides in from off-screen and must not widen the page while it does.
+    <div className="flex flex-col gap-6 overflow-x-clip">
       <section aria-label="Questions from the Tesseract" className="relative mx-auto flex min-h-[62vh] w-full max-w-5xl flex-col-reverse items-center justify-center gap-8 md:flex-row md:gap-14">
         <div className={cn("flex w-full max-w-xl flex-col gap-5 transition-opacity duration-500", gliding && "opacity-0")}>
           <div role="status" aria-live="polite" className={cn("relative min-h-24 rounded-3xl border bg-card px-5 py-4 text-lg leading-snug shadow-sm sm:text-xl", !entered && "opacity-0")}>
@@ -149,14 +150,14 @@ export function GuidedIntake({ persona, alternative }: { persona: UserPersona; a
           )}
         </div>
 
-        {/* The cube on the side; when the agents start it glides to the centre of the stage. */}
+        {/* The orb on the side; when the agents start it glides to the centre of the stage. */}
         <div
-          // Padding: a turning cube's corners reach past its box, so keep them off the bubble.
-          className="animate-intake-enter shrink-0 p-8 transition-transform ease-in-out motion-reduce:transition-none md:p-12"
+          className="animate-intake-enter shrink-0 transition-transform ease-in-out motion-reduce:transition-none"
           style={{ transitionDuration: `${GLIDE_MS}ms`, transform: gliding ? "translateX(calc(-50% - 7rem)) scale(1.25)" : undefined }}
         >
-          <TesseractCube size={150} mode={gliding ? "work" : typing ? "talk" : "idle"} className="md:hidden" />
-          <TesseractCube size={240} mode={gliding ? "work" : typing ? "talk" : "idle"} className="hidden md:block" />
+          {/* Thinking before each question, a waiting dot-grid cube while it is the person's turn (or an
+              answer needs fixing), and working rings once the request is sent. */}
+          <DotOrb status={problem ? "stuck" : gliding || sending ? "working" : !entered || typing ? "thinking" : "stuck"} size="css" className="size-[214px] md:size-[336px]" />
         </div>
       </section>
 

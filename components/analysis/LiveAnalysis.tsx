@@ -164,7 +164,7 @@ export function LiveAnalysis({ id }: { id: string }) {
       </div>
 
       {/* The agent loading screen is for the waiting minute; finished runs go straight to the result. */}
-      {!isDone(a) && <AgentFlow persona={input.persona} toolCalls={a.toolCalls} />}
+      {!isDone(a) && <AgentFlow persona={input.persona} status={a.status} toolCalls={a.toolCalls} />}
 
       <ResultsOverview analysis={a} />
 

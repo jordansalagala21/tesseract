@@ -1,7 +1,8 @@
 // Which agents the loading screen shows for each customer type, and what state each is in.
 // Pure, so it is unit-tested in tests/ui/agent-flow.test.ts. A node only moves on when the real
 // agent reports a tool call for it: nothing here is timed or invented.
-import type { AgentToolCall, AgentToolName, UserPersona } from "@/lib/contracts";
+import type { AgentToolCall, AgentToolName, AnalysisResponse, UserPersona } from "@/lib/contracts";
+import type { OrbState } from "./dot-orb-engine";
 
 export type FlowSource = "CoStar" | "Matterport" | "Vexcel" | "Market" | "Search agent" | "Analysis agent";
 export type FlowNode = { id: string; source: FlowSource; label: string; tools: AgentToolName[] };
@@ -49,4 +50,14 @@ export function flowRows(persona: UserPersona, calls: AgentToolCall[]): FlowRow[
     const detail = running ? running.reason : (latestDone?.outputSummary ?? null);
     return { ...node, state, detail };
   });
+}
+
+/**
+ * The orb's status for a running analysis: working while any tool runs, thinking while the model
+ * reasons between tools (or the run is queued), success when it completes, stuck when it fails.
+ */
+export function orbStatus(status: AnalysisResponse["status"], calls: AgentToolCall[]): OrbState {
+  if (status === "completed") return "success";
+  if (status === "failed") return "stuck";
+  return calls.some((c) => c.status === "running" || c.status === "pending") ? "working" : "thinking";
 }

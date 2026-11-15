@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { afterAll, describe, expect, test } from "vitest";
+import { afterAll, describe, expect, test, vi } from "vitest";
 import { GET as detail } from "@/app/api/properties/[id]/route";
 import { GET as spaces } from "@/app/api/properties/[id]/spaces/route";
 import { ApiError, PropertyDetailResponse, PropertySpacesResponse } from "@/lib/contracts";
@@ -46,7 +46,76 @@ describeDb("GET /api/properties/[id] (requires a built DuckDB)", () => {
     expect(() => ApiError.parse(body)).not.toThrow();
     expect(body.error.code).toBe("not_found");
   });
+
+  /**
+   * The enrichment must never take the page down with it. AerialViewer and toTourOptions are
+   * presentational, so whatever this route omits is simply not shown — but a 500 here loses the
+   * CoStar facts too, which come from our own DuckDB and always answer.
+   */
+  test("still answers with the CoStar facts when Matterport and Vexcel are unreachable", async () => {
+    const { clearModelCache } = await import("@/lib/data/matterport");
+    const { clearAerialMetadataCache } = await import("@/lib/data/vexcel");
+    clearModelCache();
+    clearAerialMetadataCache();
+    vi.stubEnv("MATTERPORT_API_KEY", "");
+    vi.stubEnv("MATTERPORT_API_TOKEN", "");
+    vi.stubEnv("VEXCEL_API_KEY", "");
+    try {
+      const response = await detail(new Request(`http://localhost/api/properties/${TRAVIS}`), ctx(TRAVIS));
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(() => PropertyDetailResponse.parse(body)).not.toThrow();
+      expect(body.matterportModels).toEqual([]);
+      expect(body.aerial).toEqual([]);
+      // The part that does not depend on a credential.
+      expect(body.property.id).toBe(1018657);
+      expect(body.currentTenants).toHaveLength(2);
+      expect(body.property.matterportModelIds.length).toBeGreaterThan(0);
+    } finally {
+      vi.unstubAllEnvs();
+      clearModelCache();
+      clearAerialMetadataCache();
+    }
+  });
+
+  test("never serializes a credential or an upstream host", async () => {
+    const response = await detail(new Request(`http://localhost/api/properties/${TRAVIS}`), ctx(TRAVIS));
+    const text = await response.text();
+    for (const secret of ["x-api-key", "vexcelgroup.com", "api.matterport.com", "Authorization"]) {
+      expect(text).not.toContain(secret);
+    }
+  });
 });
+
+/** Needs live credentials: these assert the enrichment is actually wired up, not just safe. */
+describe.skipIf(!existsSync(dbPath) || !process.env.VEXCEL_API_KEY || !process.env.MATTERPORT_API_KEY)(
+  "GET /api/properties/[id] enrichment (requires a built DuckDB and credentials)",
+  () => {
+    test("carries Matterport metadata and both Vexcel views", async () => {
+      const response = await detail(new Request(`http://localhost/api/properties/${TRAVIS}`), ctx(TRAVIS));
+      const body = await response.json();
+      expect(() => PropertyDetailResponse.parse(body)).not.toThrow();
+
+      // Suite 100 and Suite 104 are the two models CoStar links to this property.
+      expect(body.matterportModels.length).toBe(body.property.matterportModelIds.length);
+      for (const model of body.matterportModels) {
+        expect(model.scannedAreaSf).toBeGreaterThan(0);
+        expect(model.rooms.length).toBeGreaterThan(0);
+      }
+      // Each scan keeps its advertised suite, so the tour is not labelled an unmatched building scan.
+      const suites = Object.fromEntries(body.matterportModels.map((m: { id: string; matchedSuite: string | null }) => [m.id, m.matchedSuite]));
+      expect(suites).toEqual({ NxYn1owequw: "100", "4H2JSnQ3wSj": "104" });
+
+      // One ortho and one north oblique, each pointing at our proxy rather than at Vexcel.
+      expect(body.aerial.map((a: { kind: string }) => a.kind)).toEqual(["ortho", "oblique"]);
+      for (const image of body.aerial) {
+        expect(image.imageUrl.startsWith("/api/imagery/vexcel/")).toBe(true);
+        expect(image.attribution).toContain("Vexcel");
+        expect(image.collection).not.toBe("unknown");
+      }
+    }, 60_000);
+  },
+);
 
 describeDb("GET /api/properties/[id]/spaces (requires a built DuckDB)", () => {
   test("returns the four suites with the availability note, contract-valid", async () => {

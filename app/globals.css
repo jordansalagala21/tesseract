@@ -226,13 +226,9 @@
 }
 
 /* Character: the app reads like a set of drawings.
-   - Drafting-paper dots behind every page (cards and the header sit on top as solid surfaces).
+   - Plain page background (the drafting-dot grid was removed: it read as a whiteboard).
    - Section headings use the wide signage face, like sheet titles.
    - A dimension line (a rule with end ticks) closes each page title block. */
-body {
-  background-image: radial-gradient(var(--plan-grid) 1px, transparent 1.3px);
-  background-size: 24px 24px;
-}
 
 h2 {
   font-family: var(--font-display);

@@ -128,8 +128,44 @@
     @apply font-sans;
   }
 }
+/* Design tokens. One scale each for type, radius, shadow and width; every component uses these
+   through Tailwind's standard class names (text-sm, rounded-xl, shadow-sm, max-w-page). */
+@theme inline {
+  /* Type: 8 steps, 2 families (system sans for text, Archivo for headings) */
+  --text-xs: 0.75rem;      --text-xs--line-height: 1.35;   /* 12 caption */
+  --text-sm: 0.8125rem;    --text-sm--line-height: 1.4;    /* 13 meta */
+  --text-base: 0.9375rem;  --text-base--line-height: 1.5;  /* 15 body */
+  --text-lg: 1.0625rem;    --text-lg--line-height: 1.5;    /* 17 lead and controls */
+  --text-xl: 1.25rem;      --text-xl--line-height: 1.3;    /* 20 section title */
+  --text-2xl: 1.75rem;     --text-2xl--line-height: 1.15;  /* 28 heading */
+  --text-3xl: 2.125rem;    --text-3xl--line-height: 1.1;   /* 34 page title */
+  --text-4xl: clamp(2.5rem, 3.6vw + 1rem, 4rem); --text-4xl--line-height: 1; /* landing headline */
+
+  /* Radius: controls 12, cards 20, pills full. md (8) is only for items nested inside a control. */
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1.25rem;
+
+  /* One shadow, for raised surfaces (selected segment, slider handle) */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.1);
+
+  /* Page widths: one outer container, plus a reading measure and a form column inside it */
+  --container-page: 70rem;
+  --container-form: 45rem;
+  --container-measure: 36rem;
+
+  /* Status colours, defined once */
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-scrim: var(--scrim);
+  --color-scrim-foreground: var(--scrim-foreground);
+}
+
 /* Tesseract palette: concrete surface, graphite ink, plan-green accent.
-   Follows the system appearance; the .dark class still works. */
+   Light is the default look on every device. Adding the .dark class to <html> switches to the dark palette. */
 :root {
   --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-inter), system-ui, sans-serif;
   /* Archivo, set slightly expanded, gives headlines an architectural-signage feel; body stays on the system font. */
@@ -147,46 +183,40 @@
   --border: #d6dbd6;
   --input: #d6dbd6;
   --ring: #1d6a56;
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  --warning: #c2780a;
+  --warning-foreground: #7a4504;
+  --info: #0b78b6;
+  --scrim: rgb(0 0 0 / 0.66);
+  --scrim-foreground: #ffffff;
   --plan-ink: #3a4541;
   --plan-grid: #dfe3df;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not(.light) {
-    --background: #101614;
-    --foreground: #e8ece9;
-    --card: #172019;
-    --card-foreground: #e8ece9;
-    --popover: #172019;
-    --popover-foreground: #e8ece9;
-    --primary: #62c4a4;
-    --primary-foreground: #062219;
-    --muted: #1f2925;
-    --muted-foreground: #9ba7a1;
-    --border: #2a3531;
-    --input: #2a3531;
-    --ring: #62c4a4;
-    --plan-ink: #b9c4bf;
-    --plan-grid: #222c28;
-  }
-}
-
 .dark {
-  --background: #101614;
-  --foreground: #e8ece9;
-  --card: #172019;
-  --card-foreground: #e8ece9;
-  --popover: #172019;
-  --popover-foreground: #e8ece9;
+  --background: #171613;
+  --foreground: #eeebe4;
+  --card: #201f1b;
+  --card-foreground: #eeebe4;
+  --popover: #201f1b;
+  --popover-foreground: #eeebe4;
   --primary: #62c4a4;
   --primary-foreground: #062219;
-  --muted: #1f2925;
-  --muted-foreground: #9ba7a1;
-  --border: #2a3531;
-  --input: #2a3531;
+  --muted: #2b2924;
+  --muted-foreground: #aaa598;
+  --border: #3a372f;
+  --input: #3a372f;
   --ring: #62c4a4;
-  --plan-ink: #b9c4bf;
-  --plan-grid: #222c28;
+  --destructive: #f97066;
+  --destructive-foreground: #2a0a07;
+  --warning: #f2b23e;
+  --warning-foreground: #f6cf7d;
+  --info: #5bbcf0;
+  --scrim: rgb(0 0 0 / 0.66);
+  --scrim-foreground: #ffffff;
+  --plan-ink: #c9c4b6;
+  --plan-grid: #2a2823;
 }
 
 /* Drafting-paper dots behind the entry-card previews */
@@ -194,3 +224,35 @@
   background-image: radial-gradient(var(--plan-grid) 1px, transparent 1.3px);
   background-size: 16px 16px;
 }
+
+/* Character: the app reads like a set of drawings.
+   - Drafting-paper dots behind every page (cards and the header sit on top as solid surfaces).
+   - Section headings use the wide signage face, like sheet titles.
+   - A dimension line (a rule with end ticks) closes each page title block. */
+body {
+  background-image: radial-gradient(var(--plan-grid) 1px, transparent 1.3px);
+  background-size: 24px 24px;
+}
+
+h2 {
+  font-family: var(--font-display);
+  font-stretch: 112%;
+}
+
+.dimension-line {
+  position: relative;
+  height: 9px;
+  border-top: 1px solid color-mix(in srgb, var(--plan-ink) 45%, transparent);
+  margin-top: 4px;
+}
+.dimension-line::before,
+.dimension-line::after {
+  content: "";
+  position: absolute;
+  top: -5px;
+  width: 1px;
+  height: 9px;
+  background: color-mix(in srgb, var(--plan-ink) 70%, transparent);
+}
+.dimension-line::before { left: 0; }
+.dimension-line::after { right: 0; }

@@ -1,7 +1,8 @@
 import { useId } from "react";
-import { AlertTriangle } from "lucide-react";
 import type { Evidence, MarketAnalysis } from "@/lib/contracts";
 import { humanize } from "@/components/property/format";
+import { Info } from "lucide-react";
+import { Notice } from "@/components/ui/notice";
 import { EvidenceChip } from "./EvidenceChip";
 import { barRows, formatRadius, money, rentRange } from "./market-format";
 
@@ -15,13 +16,13 @@ const SERVICE_TYPES: Record<string, string> = {
 
 function Card({ title, n, unit, children }: { title: string; n: number; unit: string; children: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-4 rounded-[20px] border bg-card p-5">
-      <header className="flex items-baseline justify-between gap-3">
-        <h3 className="text-[17px] font-semibold">{title}</h3>
+    <section className="flex flex-col gap-4 rounded-2xl border bg-card p-5">
+      <header>
+        <h3 className="text-lg font-semibold">{title}</h3>
         {/* Sample size on every chart: these are counts from kit properties only, not the whole market. */}
-        <span className="shrink-0 text-[13px] text-muted-foreground tabular-nums">
+        <p className="mt-0.5 text-sm text-muted-foreground tabular-nums">
           n = {n} {unit}
-        </span>
+        </p>
       </header>
       {children}
     </section>
@@ -30,17 +31,20 @@ function Card({ title, n, unit, children }: { title: string; n: number; unit: st
 
 function BarList({ items, total, unit, empty }: { items: { label: string; count: number }[]; total: number; unit: string; empty: string }) {
   const rows = barRows(items, total);
-  if (rows.length === 0) return <p className="text-[15px] text-muted-foreground">{empty}</p>;
+  if (rows.length === 0) return <p className="text-base text-muted-foreground">{empty}</p>;
   return (
     <ul className="flex flex-col gap-3">
       {rows.map((r) => (
         <li key={r.label} title={`${r.label}: ${r.count} of ${total} ${unit} (${r.sharePct}%)`}>
-          <div className="flex items-baseline justify-between gap-3 text-[15px]">
-            <span className="min-w-0 truncate">{r.label}</span>
-            <span className="shrink-0 font-semibold tabular-nums">{r.count}</span>
+          <div className="flex items-baseline justify-between gap-3 text-base">
+            <span className="min-w-0">{r.label}</span>
+            <span className="shrink-0 tabular-nums">
+              <span className="font-semibold">{r.count}</span>
+              <span className="ml-1.5 text-sm text-muted-foreground">{r.sharePct}%</span>
+            </span>
           </div>
-          <div className="mt-1.5 h-2 rounded-full bg-muted" aria-hidden="true">
-            <div className="h-full min-w-1 rounded-full bg-primary" style={{ width: `${r.widthPct}%` }} />
+          <div className="mt-1.5 h-2.5 rounded-sm bg-muted" aria-hidden="true">
+            <div className="h-full min-w-1 rounded-sm bg-primary" style={{ width: `${r.widthPct}%` }} />
           </div>
         </li>
       ))}
@@ -69,18 +73,24 @@ export function MarketDashboard({
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h2 id={headingId} className="text-[20px] font-semibold tracking-tight">
+        <h2 id={headingId} className="text-xl font-semibold tracking-tight">
           Market context
         </h2>
-        <span className="text-[15px] text-muted-foreground">Within {formatRadius(m.radiusMeters)} of the property</span>
+        <span className="text-base text-muted-foreground">Within {formatRadius(m.radiusMeters)} of the property</span>
       </div>
 
       {/* Limitations first and always visible, so the numbers below are read with them in mind. */}
-      <div role="note" className="rounded-2xl border border-dashed border-muted-foreground/40 px-4 py-3">
-        <h3 className="text-[15px] font-semibold">What this can’t tell you</h3>
-        <ul className="mt-1.5 flex list-disc flex-col gap-1 pl-4 text-[15px] leading-snug text-muted-foreground">
+      <div role="note" className="flex flex-col gap-x-5 gap-y-1 rounded-xl border bg-muted/50 px-4 py-2.5 text-sm lg:flex-row lg:items-baseline">
+        <p className="flex shrink-0 items-center gap-2 font-semibold">
+          <Info className="size-4 text-muted-foreground" aria-hidden="true" />
+          What this can’t tell you
+        </p>
+        <ul className="flex flex-col gap-x-5 gap-y-0.5 text-muted-foreground sm:flex-row sm:flex-wrap">
           {m.limitations.map((l) => (
-            <li key={l}>{l}</li>
+            <li key={l} className="flex items-baseline gap-2">
+              <span className="size-1 shrink-0 -translate-y-0.5 rounded-full bg-muted-foreground" aria-hidden="true" />
+              {l}
+            </li>
           ))}
         </ul>
       </div>
@@ -89,47 +99,50 @@ export function MarketDashboard({
         <Card title="Asking rent nearby" n={m.comparableSpaces.count} unit="advertised spaces">
           {rent ? (
             <div>
-              <p className="text-[15px] text-muted-foreground">
+              <p className="text-base text-muted-foreground">
                 {rent.median != null ? (
                   <>
-                    Median <span className="text-[28px] leading-none font-semibold text-foreground tabular-nums">{money(rent.median)}</span> per SF per year
+                    Median <span className="text-2xl leading-none font-semibold text-foreground tabular-nums">{money(rent.median)}</span>{" "}
+                    per SF per year
                   </>
                 ) : (
                   "Median not available"
                 )}
               </p>
               <div
-                className="relative mt-5 h-2 rounded-full bg-primary/25"
+                className="relative mt-6 h-2.5 rounded-sm bg-primary/25"
                 role="img"
                 aria-label={`Asking rent ranges from ${money(rent.min)} to ${money(rent.max)} per square foot per year${rent.median != null ? `, median ${money(rent.median)}` : ""}.`}
               >
                 {rent.medianPct != null && (
                   <span
-                    className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card bg-primary"
+                    className="absolute top-1/2 h-5 w-1 -translate-x-1/2 -translate-y-1/2 rounded-sm bg-primary ring-2 ring-card"
                     style={{ left: `${rent.medianPct}%` }}
                     title={`Median ${money(rent.median!)}/SF/yr`}
                   />
                 )}
               </div>
-              <div className="mt-2 flex justify-between text-[13px] text-muted-foreground tabular-nums">
-                <span>Low {money(rent.min)}</span>
-                <span>High {money(rent.max)}</span>
+              <div className="mt-2 flex justify-between text-sm tabular-nums">
+                <span>
+                  <span className="text-muted-foreground">Low </span>
+                  <span className="font-semibold">{money(rent.min)}</span>
+                </span>
+                <span>
+                  <span className="text-muted-foreground">High </span>
+                  <span className="font-semibold">{money(rent.max)}</span>
+                </span>
               </div>
-              <p className="mt-3 text-[13px] leading-snug text-muted-foreground">
+              <p className="mt-3 text-sm leading-snug text-muted-foreground">
                 Asking rents, not achieved rents, and only from spaces that publish a rate.
               </p>
             </div>
           ) : (
-            <p className="text-[15px] text-muted-foreground">None of these spaces publish an asking rate.</p>
+            <p className="text-base text-muted-foreground">None of these spaces publish an asking rate.</p>
           )}
           {mixedService && (
-            <p className="flex gap-2 rounded-xl bg-amber-500/10 px-3 py-2.5 text-[13px] leading-snug">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden="true" />
-              <span>
-                <span className="font-semibold">Mixed lease types.</span> This range combines triple net and gross rents,
-                which aren’t directly comparable.
-              </span>
-            </p>
+            <Notice tone="warning" title="Mixed lease types">
+              This range combines triple net and gross rents, which aren’t directly comparable.
+            </Notice>
           )}
         </Card>
 
@@ -161,20 +174,20 @@ export function MarketDashboard({
         </Card>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-[20px] border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-[17px] font-semibold">Sale comps</h3>
-          <p className="mt-0.5 text-[15px] text-muted-foreground">
+          <h3 className="text-lg font-semibold">Sale comps</h3>
+          <p className="mt-0.5 text-base text-muted-foreground">
             <span className="font-semibold text-foreground tabular-nums">{m.saleComps.count}</span> recorded,{" "}
             <span className="font-semibold text-foreground tabular-nums">{m.saleComps.withDisclosedPrice}</span> with a disclosed price.
           </p>
         </div>
-        <span className="text-[13px] text-muted-foreground tabular-nums">n = {m.saleComps.count} sales</span>
+        <span className="text-sm text-muted-foreground tabular-nums">n = {m.saleComps.count} sales</span>
       </div>
 
       {m.evidenceIds.length > 0 && (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
-          <h3 className="shrink-0 pt-1 text-[15px] font-semibold">Sources</h3>
+          <h3 className="shrink-0 pt-1 text-base font-semibold">Sources</h3>
           <ul className="flex flex-wrap gap-1.5">
             {m.evidenceIds.map((id) => (
               <li key={id} className="max-w-full">

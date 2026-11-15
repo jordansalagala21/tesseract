@@ -1,16 +1,18 @@
 import type { Evidence } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
+import { cleanStatement, sourceLabel } from "./evidence-format";
 
 export const EVIDENCE_KINDS: Record<Evidence["kind"], { label: string; dot: string }> = {
   verified_fact: { label: "Verified fact", dot: "bg-primary" },
-  ai_observation: { label: "AI observation", dot: "bg-amber-500" },
-  user_assumption: { label: "Your assumption", dot: "bg-sky-500" },
+  ai_observation: { label: "AI observation", dot: "bg-warning" },
+  user_assumption: { label: "Your assumption", dot: "bg-info" },
   missing: { label: "Missing info", dot: "bg-muted-foreground" },
 };
 
 /**
- * One piece of evidence as a chip, coloured by kind. Links to #evidence-<id> (the Evidence Trail,
- * UI-08) unless onSelect is given.
+ * One piece of evidence: its kind and source ("Verified fact, CoStar listing") above the full
+ * statement, so a list of them can be scanned. Opens the Evidence Trail on that item: calls
+ * onSelect when given, otherwise links to #evidence-<id>.
  */
 export function EvidenceChip({
   id,
@@ -23,12 +25,17 @@ export function EvidenceChip({
 }) {
   const kind = evidence ? EVIDENCE_KINDS[evidence.kind] : undefined;
   const cls =
-    "inline-flex max-w-full items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[13px] leading-4 font-medium text-foreground transition-colors outline-none hover:bg-primary/12 focus-visible:ring-2 focus-visible:ring-ring sm:max-w-[22rem]";
+    "flex min-h-11 w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none";
   const body = (
     <>
-      <span className={cn("size-1.5 shrink-0 rounded-full", kind?.dot ?? "bg-muted-foreground")} aria-hidden="true" />
-      {kind && <span className="sr-only">{kind.label}: </span>}
-      <span className="truncate">{evidence?.statement ?? id}</span>
+      <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", kind?.dot ?? "bg-muted-foreground")} aria-hidden="true" />
+      <span className="min-w-0">
+        <span className="block text-sm text-muted-foreground">
+          {kind?.label ?? "Evidence"}
+          {evidence && <>, {sourceLabel(evidence)}</>}
+        </span>
+        <span className="block text-base leading-snug text-foreground">{evidence ? cleanStatement(evidence.statement) : id}</span>
+      </span>
     </>
   );
   return onSelect ? (

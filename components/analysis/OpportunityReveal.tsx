@@ -1,7 +1,10 @@
 import { useId } from "react";
-import { AlertTriangle } from "lucide-react";
+import { ChevronRight, SearchX } from "lucide-react";
+import { EmptyState } from "@/components/ui/states";
 import type { Evidence, Opportunity, UserPersona } from "@/lib/contracts";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Notice } from "@/components/ui/notice";
+import { cleanStatement } from "./evidence-format";
 import { EvidenceChip } from "./EvidenceChip";
 import { SCORE_PARTS, STRATEGIES, VERDICTS, groupOpportunities, scoreText } from "./opportunity-format";
 
@@ -10,9 +13,9 @@ type ChipProps = { byId: Map<string, Evidence>; onEvidenceSelect?: (id: string) 
 function Chips({ ids, byId, onEvidenceSelect }: ChipProps & { ids: string[] }) {
   if (ids.length === 0) return null;
   return (
-    <ul className="flex flex-wrap gap-1.5">
+    <ul className="-mx-2.5 grid gap-0.5 sm:grid-cols-2">
       {ids.map((id) => (
-        <li key={id} className="max-w-full">
+        <li key={id} className="min-w-0">
           <EvidenceChip id={id} evidence={byId.get(id)} onSelect={onEvidenceSelect} />
         </li>
       ))}
@@ -24,8 +27,8 @@ function ListBlock({ title, items }: { title: string; items: string[] }) {
   if (items.length === 0) return null;
   return (
     <div>
-      <h4 className="text-[13px] font-semibold text-muted-foreground">{title}</h4>
-      <ul className="mt-1.5 flex list-disc flex-col gap-1 pl-4 text-[15px] leading-snug marker:text-muted-foreground">
+      <h4 className="text-sm font-semibold text-muted-foreground">{title}</h4>
+      <ul className="mt-1.5 flex list-disc flex-col gap-1 pl-4 text-base leading-snug marker:text-muted-foreground">
         {items.map((item) => (
           <li key={item}>{item}</li>
         ))}
@@ -37,22 +40,22 @@ function ListBlock({ title, items }: { title: string; items: string[] }) {
 function OpportunityCard({ opp, titleId, ...chipProps }: ChipProps & { opp: Opportunity; titleId: string }) {
   const verdict = VERDICTS[opp.verdict];
   return (
-    <article aria-labelledby={titleId} className="rounded-[24px] border bg-card">
+    <article aria-labelledby={titleId} className="rounded-2xl border bg-card">
       <div className="flex flex-col gap-5 p-5 sm:p-6">
         <header className="flex items-start gap-4">
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-muted font-heading text-[18px] font-bold tabular-nums [font-stretch:112%]">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-muted font-heading text-lg font-bold tabular-nums [font-stretch:112%]">
             <span className="sr-only">Rank </span>
             {opp.rank}
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-              <h3 id={titleId} className="text-[20px] leading-snug font-semibold">
-                {opp.title}
+              <h3 id={titleId} className="text-xl leading-snug font-semibold">
+                {cleanStatement(opp.title)}
               </h3>
-              <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-[13px] font-semibold", verdict.tone)}>{verdict.label}</span>
+              <Badge variant={verdict.variant} className="shrink-0">{verdict.label}</Badge>
             </div>
-            <p className="mt-0.5 text-[15px] text-muted-foreground">{STRATEGIES[opp.strategy]}</p>
-            <p className="mt-2 text-[15px] leading-relaxed">{opp.summary}</p>
+            <p className="mt-0.5 text-base text-muted-foreground">{STRATEGIES[opp.strategy]}</p>
+            <p className="mt-2 text-base leading-relaxed">{opp.summary}</p>
           </div>
         </header>
 
@@ -62,20 +65,21 @@ function OpportunityCard({ opp, titleId, ...chipProps }: ChipProps & { opp: Oppo
               const { score } = opp.scores[key];
               return (
                 <div key={key}>
-                  <dt className="text-[13px] text-muted-foreground">{label}</dt>
-                  <dd className={score == null ? "mt-1 text-[13px] leading-5 text-muted-foreground" : "mt-0.5 text-[20px] font-semibold tabular-nums"}>
+                  <dt className="text-sm text-muted-foreground">{label}</dt>
+                  <dd className={score == null ? "mt-1 text-sm leading-5 text-muted-foreground" : "mt-0.5 text-xl font-semibold tabular-nums"}>
                     {scoreText(score)}
+                    {score != null && <span className="ml-1 text-sm font-normal text-muted-foreground">/ 100</span>}
                   </dd>
                   {score != null && (
-                    <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
-                      <div className="h-full rounded-full bg-primary" style={{ width: `${score}%` }} />
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-sm bg-muted" aria-hidden="true">
+                      <div className="h-full rounded-sm bg-primary" style={{ width: `${score}%` }} />
                     </div>
                   )}
                 </div>
               );
             })}
           </dl>
-          <p className="mt-4 text-[15px]">
+          <p className="mt-4 text-base">
             <span className="text-muted-foreground">Overall: </span>
             {opp.scores.overall == null ? (
               <span className="text-muted-foreground">not scored, because a required score has insufficient evidence</span>
@@ -86,20 +90,16 @@ function OpportunityCard({ opp, titleId, ...chipProps }: ChipProps & { opp: Oppo
         </div>
 
         {opp.blockers.length > 0 && (
-          <div role="note" className="rounded-2xl border border-destructive/35 bg-destructive/[0.06] p-4">
-            <h4 className="flex items-center gap-2 text-[15px] font-semibold text-destructive">
-              <AlertTriangle className="size-4" aria-hidden="true" />
-              {opp.blockers.length === 1 ? "Blocker" : `${opp.blockers.length} blockers`}
-            </h4>
-            <ul className="mt-2 flex flex-col gap-3">
+          <Notice tone="danger" title={opp.blockers.length === 1 ? "Blocker" : `${opp.blockers.length} blockers`}>
+            <ul className="mt-1 flex flex-col gap-3">
               {opp.blockers.map((b) => (
-                <li key={b.description} className="flex flex-col gap-1.5">
-                  <span className="text-[15px] leading-snug font-medium">{b.description}</span>
+                <li key={b.description} className="flex flex-col gap-1">
+                  <span className="font-medium text-foreground">{b.description}</span>
                   <Chips ids={b.evidenceIds} {...chipProps} />
                 </li>
               ))}
             </ul>
-          </div>
+          </Notice>
         )}
 
         <div className="grid gap-4 sm:grid-cols-3">
@@ -111,17 +111,18 @@ function OpportunityCard({ opp, titleId, ...chipProps }: ChipProps & { opp: Oppo
 
       <footer className="flex flex-col gap-3 border-t px-5 py-4 sm:px-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
-          <h4 className="shrink-0 pt-1 text-[15px] font-semibold">Why?</h4>
+          <h4 className="shrink-0 pt-2 text-base font-semibold">Evidence</h4>
           {opp.supportingEvidenceIds.length > 0 ? (
             <Chips ids={opp.supportingEvidenceIds} {...chipProps} />
           ) : (
-            <p className="pt-1 text-[15px] text-muted-foreground">No supporting evidence was found for this idea.</p>
+            <p className="pt-1 text-base text-muted-foreground">No supporting evidence was found for this use.</p>
           )}
         </div>
-        <details className="group text-[15px]">
-          <summary className="cursor-pointer rounded-md text-primary outline-none select-none focus-visible:ring-2 focus-visible:ring-ring">
-            How each score was set
-          </summary>
+        <details className="group/d text-base">
+          <summary className="-mx-1 flex h-11 w-fit cursor-pointer items-center gap-1 [&::-webkit-details-marker]:hidden rounded-md px-1 text-primary outline-none select-none focus-visible:ring-2 focus-visible:ring-ring">
+              <ChevronRight className="size-4 transition-transform group-open/d:rotate-90 motion-reduce:transition-none" aria-hidden="true" />
+              How each score was set
+            </summary>
           <ul className="mt-3 flex flex-col gap-3">
             {SCORE_PARTS.map(([key, label]) => {
               const part = opp.scores[key];
@@ -129,7 +130,7 @@ function OpportunityCard({ opp, titleId, ...chipProps }: ChipProps & { opp: Oppo
                 <li key={key} className="flex flex-col gap-1.5">
                   <p className="leading-snug">
                     <span className="font-semibold">{label}: </span>
-                    <span className="text-muted-foreground">{part.rationale}</span>
+                    <span className="text-muted-foreground">{part.rationale.trim() === "FIXTURE-ONLY" ? "Example reason (sample data)." : cleanStatement(part.rationale)}</span>
                   </p>
                   <Chips ids={part.evidenceIds} {...chipProps} />
                 </li>
@@ -164,23 +165,23 @@ export function OpportunityReveal({
   return (
     <section aria-labelledby={`${uid}-heading`}>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
-        <h2 id={`${uid}-heading`} className="text-[20px] font-semibold tracking-tight">
+        <h2 id={`${uid}-heading`} className="text-xl font-semibold tracking-tight">
           {persona === "entrepreneur" ? "Spaces that fit" : "What this space could become"}
         </h2>
-        <span className="text-[15px] text-muted-foreground tabular-nums">
-          {opportunities.length} {opportunities.length === 1 ? "idea" : "ideas"}, ranked
+        <span className="text-base text-muted-foreground tabular-nums">
+          {opportunities.length} {opportunities.length === 1 ? "use" : "uses"}, ranked
         </span>
       </div>
 
       {opportunities.length === 0 ? (
-        <p className="rounded-[20px] border bg-card px-5 py-6 text-[15px] text-muted-foreground">
-          The agent didn’t find a use the evidence supports. Check the missing information in the Evidence Trail.
-        </p>
+        <EmptyState title="No use fits the evidence yet" icon={SearchX}>
+          Check the missing information in the Evidence Trail to see what the agent needed.
+        </EmptyState>
       ) : (
         <div className="flex flex-col gap-8">
           {groups.map((g) => (
             <div key={g.title ?? "all"} className="flex flex-col gap-4">
-              {g.title && <h3 className="text-[17px] font-semibold text-muted-foreground">{g.title}</h3>}
+              {g.title && <h3 className="text-lg font-semibold text-muted-foreground">{g.title}</h3>}
               {g.items.map((opp) => (
                 <OpportunityCard key={opp.id} titleId={`${uid}-${opp.id}`} opp={opp} byId={byId} onEvidenceSelect={onEvidenceSelect} />
               ))}

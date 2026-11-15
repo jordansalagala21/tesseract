@@ -21,20 +21,40 @@
 
 ## Two-minute storyline
 
+Updated after INT-04…07 to what the app actually does. A live owner run takes about 50–65 s, so the timeline is the show.
+
 | Time | Beat |
 |---|---|
-| 0:00–0:15 | Problem: "Available space isn't the same as a space without a future." Introduce Tesseract and the three personas. |
-| 0:15–0:30 | Owner → search "Travis" → 2600 Travis St → Suite 100 page: CoStar facts, 3D twin, aerial. Point out the "advertised ≠ vacant" label. |
-| 0:30–1:05 | Click **Analyze**. The timeline streams: CoStar profile → 3D model → interior vision (finds the existing bar and kitchen) → aerial and oblique (corner, surface lot) → nearby tenants (F45 in the building; the agent flags a fitness-overlap risk on its own) → scoring. |
-| 1:05–1:35 | Opportunity Reveal: top 3 uses with evidence chips. Click "Why?" to jump the 3D view and show the photo and CoStar field. Show the blockers (permitted use unverified) and the missing-info bucket. |
-| 1:35–1:50 | What-if: cap rent at $35 → the agent re-runs and pivots to Suites 106/107 ($37), noting they have no 3D model. Edit NNN → the cost updates with its formula. |
-| 1:50–2:00 | Flip to Investor and Idea entry points (same engine). Close: "Real estate platforms find buildings. Tesseract shows what they could become." |
+| 0:00–0:15 | Problem: "Available space isn't the same as a space without a future." Home page: drag the before/after slider (real Matterport photo → AI concept, labelled as such). |
+| 0:15–0:30 | **Find a property** → search "2600 Travis" → property page: CoStar facts, the Suite 100 3D tour, Vexcel aerial with capture date and credit, tenants (F45, Warehouse Live). Point out "advertised availability is not confirmed vacancy". |
+| 0:30–1:20 | Click **Analyze Suite 100**. The timeline fills in live: CoStar profile → 3D scan → interior vision (bar counter, booths, glazing, patio) → aerial vision (corner site, frontage) → nearby market (no comparable retail rent nearby, which is recorded as missing) → scores. Narrate while it runs. |
+| 1:20–1:45 | Results: ranked ideas, restaurant/bar first (existing fit-out), boutique fitness "complements, not duplicates, F45". Open an evidence chip → Evidence Trail with its CoStar field or Matterport scan. Show the first unknown: "Economics not assessed… capped at possible". |
+| 1:45–1:55 | **Run the numbers**: change the rent; the lease scenario recalculates with its formula, and each input is labelled CoStar, You or Default. |
+| 1:55–2:00 | Flip to **/start** (coffee shop → 4 ranked Houston spaces) or **/invest** (buy Barker Oaks, 10.92% stated cap rate, vs lease ideas). Close: "Real estate platforms find buildings. Tesseract shows what they could become." |
+
+If the live agent is slow on venue Wi-Fi, open **`/analysis/rec_travis_owner`**: a real run captured earlier, shown with a "Recorded run" banner and its capture time.
+
+## Before presenting (5 minutes)
+
+1. `npm run dev`
+2. `npm run demo:check -- --capture`. This runs the 17 checks below, pre-warms the Matterport and Vexcel caches, and refreshes the recorded fallback. Every line should be ✅.
+3. Open `/properties/1018657` once in the presenting browser, so the 3D tour is cached.
 
 ## Demo reliability checklist
 
-- [ ] Run on **localhost** (SDK key restriction). Check the iframe works offline from the SDK.
-- [ ] Re-sign Matterport photo URLs just before the demo. They expire in about 1 h.
-- [ ] Record a fallback video of a full run.
-- [ ] Keep a fallback `AnalysisResponse` (a real captured run, clearly marked) in case the LLM API is slow.
-- [ ] All tabs load within 3 s on venue Wi-Fi (pre-warm the cache).
-- [ ] No secrets visible in the browser devtools network tab (Vexcel is proxied).
+Verified 2026-11-14 (INT-07) with `npm run demo:check -- --capture` (17/17) and a recorded browser run.
+
+- [x] **Runs on localhost.** Tours embed Matterport's public Showcase page (`my.matterport.com/show/?m=…`) in an iframe, with no SDK, so the SDK key's localhost restriction doesn't apply. The tour loaded in the browser run. (`demo:check` can't test Showcase itself: Matterport answers 403 to server-side requests, and we don't fake a browser user agent.)
+- [x] **Matterport photo URLs are never stale.** Vision downloads freshly signed `resizeUrl(web)` photos on every run (`getModelImages` never caches), and the UI references scans by model id, not by signed URL. Nothing needs re-signing by hand.
+- [x] **Fallback video** of a full owner run (home → search → property → Analyze Suite 100 → results, 50 s run): `~/Downloads/tesseract-demo/tesseract-owner-flow-2600-travis.webm` on Jordan's machine. Not committed, because it shows sponsor imagery.
+- [x] **Fallback `AnalysisResponse`:** `data/demo/rec_travis_owner.json` (gitignored), served at `/analysis/rec_travis_owner` with a "Recorded run" banner and a capture-time disclaimer. Refresh it with `--capture`.
+- [x] **Pages load in under 3 s once warm:** `/` 26 ms, search 55 ms, `/properties/1018657` 68 ms, `/start` 48 ms, `/invest` 33 ms on localhost. The first cold property load is about 1.9 s (Vexcel metadata, then cached for 1 h), which is why `demo:check` runs first.
+- [x] **No secrets in the network tab.** The browser contacts only `localhost:3000` and Matterport's public tour hosts (`my`, `static`, `cdn-2`, `events.matterport.com`). There are no `vexcelgroup.com` or `api.matterport.com` calls, and no key value in any request, response or header (checked in the browser and by `demo:check`).
+
+### Also verified live
+
+| Flow | Result |
+|---|---|
+| Owner, Suite 100 | 49–61 s · 5 ideas · ~70 evidence items · audit 0 findings |
+| Business starter (coffee shop, 1,500–4,000 SF, ≤ $45, Houston) | 76 s · 4 ranked spaces, each with a lease scenario |
+| Investor ($7.5M, 8% target, either) | 67 s · acquisition (2205 Barker Oaks Dr, 10.92% stated cap rate, promising) plus lease ideas |

@@ -15,9 +15,15 @@ import { PropertyDetailResponse, PropertySearchResponse, PropertySpacesResponse,
 export type Unavailable = { ok: false; reason: "not_set_up" | "unavailable" };
 export type Loaded<T> = { ok: true; data: T } | Unavailable;
 
-// Loopback to this same Next.js server. Fixed on purpose: deriving it from the Host header
-// would let a forged request make the server fetch any host (SSRF).
-const ORIGIN = `http://127.0.0.1:${process.env.PORT ?? 3000}`;
+// This same app. Fixed on purpose, never derived from the Host header, which would let a forged
+// request make the server fetch any host (SSRF). Locally: loopback. On Vercel there is no
+// loopback between functions, so use the site's own URL from Vercel's system variables.
+const ORIGIN =
+  process.env.VERCEL_ENV === "production" && process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : `http://127.0.0.1:${process.env.PORT ?? 3000}`;
 
 async function getJson<S extends z.ZodType>(path: string, schema: S): Promise<Loaded<z.infer<S>>> {
   // Property data is per request (live listings, signed imagery). Without this, Next 16's

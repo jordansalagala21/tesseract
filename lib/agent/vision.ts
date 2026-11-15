@@ -113,11 +113,11 @@ export function violatesVisionRules(statement: string): boolean {
 
 const INTERIOR_PROMPT = `You are looking at photos (and possibly a floor plan) of an advertised commercial space, to help judge what businesses could use it.
 Report only what is clearly visible: existing build-out (kitchen equipment, hood, bar counter, restrooms, private offices, exam rooms), the layout (open floor or partitioned), the ceiling (exposed and high-looking, or dropped), storefront glazing, and condition in plain words.
-Rules: no measurements, sizes, distances or counts with units; no code, ADA, zoning, permit or structural judgements; do not guess what you cannot see. Use low confidence when unsure. List important features you looked for but could not see under notObserved.`;
+Rules: no measurements, sizes, distances or counts with units; no code, ADA, zoning, permit or structural judgements; do not guess what you cannot see. Use low confidence when unsure. List important features you looked for but could not see under notObserved. Never use the word "vacant" (say "empty" or "unoccupied-looking" for rooms): Tesseract never calls space vacant.`;
 
 const EXTERIOR_PROMPT = `You are looking at aerial images (top-down and/or oblique) of a commercial property, to judge site access for new businesses.
 Report only what is clearly visible: surface parking next to the building, whether it sits on a street corner, street frontage, and what kinds of buildings are next to it (retail, residential, office).
-Rules: no distances, areas or parking-space counts; no code, zoning or permit judgements; do not guess what you cannot see. Use low confidence when unsure. List important things you looked for but could not see under notObserved.`;
+Rules: no distances, areas or parking-space counts; no code, zoning or permit judgements; do not guess what you cannot see. Use low confidence when unsure. List important things you looked for but could not see under notObserved. Never use the word "vacant" (say "undeveloped lot" or "empty lot"): Tesseract never calls space vacant.`;
 
 /* ------------------------------------------------------------- core */
 
@@ -157,6 +157,9 @@ interface RawObservation {
   imageIndexes: number[];
 }
 
+/** Tesseract never calls space vacant; if the model slips, reword ("vacant lot" → "empty lot"). */
+export const noVacant = (text: string) => text.replace(/\bvacant\b/gi, (w) => (w[0] === "V" ? "Empty" : "empty"));
+
 /** Build ai_observation drafts, dropping rule-breaking statements and out-of-range image indexes. */
 function toEvidence(raw: RawObservation[], images: VisionImage[], opts: VisionOptions, caveat: string) {
   const kept: { draft: EvidenceDraft; tag: string; confidence: RawObservation["confidence"] }[] = [];
@@ -185,7 +188,7 @@ function toEvidence(raw: RawObservation[], images: VisionImage[], opts: VisionOp
       draft: {
         kind: "ai_observation",
         id: `${opts.idPrefix}_${kept.length + 1}`,
-        statement: o.statement,
+        statement: noVacant(o.statement),
         model: opts.model,
         confidence: o.confidence,
         caveat,
@@ -204,7 +207,7 @@ function notObservedEvidence(notes: string[], images: VisionImage[], opts: Visio
     .map((statement, i) => ({
       kind: "ai_observation" as const,
       id: `${opts.idPrefix}_none_${i + 1}`,
-      statement,
+      statement: noVacant(statement),
       model: opts.model,
       confidence: "low" as const,
       caveat: `${caveat} Not seeing something in these images does not mean it is absent.`,

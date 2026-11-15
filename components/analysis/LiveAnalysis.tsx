@@ -140,6 +140,11 @@ export function LiveAnalysis({ id }: { id: string }) {
             </span>
           </Notice>
         )}
+        {id.startsWith("rec_") && (
+          <Notice tone="warning" title="Recorded run">
+            Captured earlier from live data and replayed here, so it isn’t running now. {a.disclaimers[0]}
+          </Notice>
+        )}
         {a.status === "completed" && (
           <p className="text-base text-muted-foreground" role="status">
             Finished in {seconds(a.createdAt, a.completedAt ?? now)} s · {a.opportunities.length} idea{a.opportunities.length === 1 ? "" : "s"} · {a.evidence.length} pieces of evidence.

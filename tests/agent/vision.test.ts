@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { BetaMessage, MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import { Evidence } from "@/lib/contracts";
 import {
+  noVacant,
   MAX_EDGE_PX,
   analyzeExteriorImages,
   analyzeInteriorImages,
@@ -152,5 +153,13 @@ describe("visionDeps", () => {
     const b = await deps.analyzeInterior({ propertyId: 1, spaceId: 2 });
     expect(Object.keys(a.facts!)).toEqual(["p1-s2"]);
     expect(a.evidence[0].id).not.toBe(b.evidence[0].id);
+  });
+});
+
+describe("noVacant", () => {
+  it("rewords 'vacant' so vision never calls space vacant", () => {
+    expect(noVacant("A grassy vacant lot sits across the intersection.")).toBe("A grassy empty lot sits across the intersection.");
+    expect(noVacant("Vacant storefront next door")).toBe("Empty storefront next door");
+    expect(noVacant("No vacancy signs visible")).toBe("No vacancy signs visible");
   });
 });

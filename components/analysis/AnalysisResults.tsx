@@ -7,6 +7,7 @@ import type { AnalysisResponse } from "@/lib/contracts";
 import { AgentTimeline } from "./AgentTimeline";
 import { EvidenceDrawer } from "./EvidenceDrawer";
 import { OpportunityReveal } from "./OpportunityReveal";
+import { ScenarioControls } from "./ScenarioControls";
 
 /**
  * The analysis workspace: investigation timeline and opportunity cards, with one Evidence Trail
@@ -43,6 +44,21 @@ export function AnalysisResults({ analysis, showTimeline = true }: { analysis: A
         </>
       )}
       <OpportunityReveal opportunities={analysis.opportunities} evidence={analysis.evidence} persona={analysis.persona} onEvidenceSelect={select} />
+      {analysis.financialScenarios.length > 0 && (
+        <section aria-labelledby={`${analysis.persona}-scenarios`} className="flex flex-col gap-4">
+          <div>
+            <h2 id={`${analysis.persona}-scenarios`} className="text-xl font-semibold tracking-tight">
+              Run the numbers
+            </h2>
+            <p className="mt-1 max-w-measure text-base text-muted-foreground">
+              Each number is labelled with where it came from: CoStar, you, or an app default. Leasing and buying are worked out separately.
+            </p>
+          </div>
+          {analysis.financialScenarios.map((s) => (
+            <ScenarioControls key={s.id} scenario={s} onEvidenceSelect={select} />
+          ))}
+        </section>
+      )}
       <EvidenceDrawer
         open={open}
         onClose={() => setOpen(false)}

@@ -76,6 +76,12 @@ describe("lease scenario", () => {
     expect(s.formulas).toContain(LEASE_FORMULAS.payback);
   });
 
+  it("reports no payback, not 0 years, when there is no build-out cost", () => {
+    const s = leaseScenario(lease({ buildOutCostUsd: user(0), monthlyRevenueUsd: user(80_000) }), meta);
+    expect(s.output.paybackYears).toBeNull();
+    expect(s.warnings.join(" ")).toMatch(/No build-out cost was entered/);
+  });
+
   it("never invents a payback when revenue does not cover costs", () => {
     const s = leaseScenario(lease({ buildOutCostUsd: user(100_000), monthlyRevenueUsd: user(40_000) }), meta);
     expect(s.output.paybackYears).toBeNull();

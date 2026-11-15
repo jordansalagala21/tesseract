@@ -80,7 +80,7 @@ function OpportunityCard({ opp, titleId, ...chipProps }: ChipProps & { opp: Oppo
             })}
           </dl>
           <p className="mt-4 text-base">
-            <span className="text-muted-foreground">Overall: </span>
+            <span className="text-muted-foreground">Requirements match: </span>
             {opp.scores.overall == null ? (
               <span className="text-muted-foreground">not scored, because a required score has insufficient evidence</span>
             ) : (

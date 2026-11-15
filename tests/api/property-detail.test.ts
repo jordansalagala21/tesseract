@@ -54,7 +54,9 @@ describeDb("GET /api/properties/[id] (requires a built DuckDB)", () => {
    */
   test("still answers with the CoStar facts when Matterport and Vexcel are unreachable", async () => {
     const { clearModelCache } = await import("@/lib/data/matterport");
+    const { clearAerialMetadataCache } = await import("@/lib/data/vexcel");
     clearModelCache();
+    clearAerialMetadataCache();
     vi.stubEnv("MATTERPORT_API_KEY", "");
     vi.stubEnv("MATTERPORT_API_TOKEN", "");
     vi.stubEnv("VEXCEL_API_KEY", "");
@@ -72,6 +74,7 @@ describeDb("GET /api/properties/[id] (requires a built DuckDB)", () => {
     } finally {
       vi.unstubAllEnvs();
       clearModelCache();
+      clearAerialMetadataCache();
     }
   });
 
@@ -99,6 +102,9 @@ describe.skipIf(!existsSync(dbPath) || !process.env.VEXCEL_API_KEY || !process.e
         expect(model.scannedAreaSf).toBeGreaterThan(0);
         expect(model.rooms.length).toBeGreaterThan(0);
       }
+      // Each scan keeps its advertised suite, so the tour is not labelled an unmatched building scan.
+      const suites = Object.fromEntries(body.matterportModels.map((m: { id: string; matchedSuite: string | null }) => [m.id, m.matchedSuite]));
+      expect(suites).toEqual({ NxYn1owequw: "100", "4H2JSnQ3wSj": "104" });
 
       // One ortho and one north oblique, each pointing at our proxy rather than at Vexcel.
       expect(body.aerial.map((a: { kind: string }) => a.kind)).toEqual(["ortho", "oblique"]);

@@ -237,8 +237,21 @@ export async function fetchVexcelImage(input: FetchImageInput): Promise<FetchedI
 }
 
 /**
- * Contract metadata for one image. Costs one upstream call and discards the bytes, so prefer
- * the proxy route when the browser is going to request the picture anyway.
+ * Metadata only (the parsed XMP and the WKT), never image bytes: sponsor storage terms are
+ * unconfirmed, so pictures are not kept, but a capture date and GSD are facts we already show.
+ * Without this, every property page downloaded both full images (~3.6 MB) just to read their
+ * metadata, and the browser then downloaded them again through the proxy.
+ */
+const METADATA_TTL_MS = 60 * 60 * 1000;
+const metadataCache = new Map<string, { xmp: VexcelXmp | null; bboxWkt: string; expiresAt: number }>();
+
+export function clearAerialMetadataCache(): void {
+  metadataCache.clear();
+}
+
+/**
+ * Contract metadata for one image. The first call costs one upstream download and discards the
+ * bytes; later calls within an hour reuse the metadata, so prefer this to re-reading images.
  */
 export async function getAerialImagery(
   propertyId: number,
@@ -247,7 +260,14 @@ export async function getAerialImagery(
   kind: Kind,
   direction: Direction | null,
 ): Promise<AerialImagery> {
-  const { xmp, bboxWkt } = await fetchVexcelImage({ lat, lon, kind, direction });
+  const key = `${propertyId}:${kind}:${direction ?? "-"}:${lat},${lon}`;
+  let entry = metadataCache.get(key);
+  if (!entry || entry.expiresAt <= Date.now()) {
+    const { xmp, bboxWkt } = await fetchVexcelImage({ lat, lon, kind, direction });
+    entry = { xmp, bboxWkt, expiresAt: Date.now() + METADATA_TTL_MS };
+    metadataCache.set(key, entry);
+  }
+  const { xmp, bboxWkt } = entry;
   return toAerialImagery({
     propertyId,
     kind,

@@ -1,6 +1,6 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { AerialImagery } from "@/lib/contracts";
-import { buildBboxWkt, parseVexcelXmp, toAerialImagery } from "@/lib/data/vexcel";
+import { buildBboxWkt, clearAerialMetadataCache, getAerialImagery, parseVexcelXmp, toAerialImagery } from "@/lib/data/vexcel";
 
 const hasKey = Boolean(process.env.VEXCEL_API_KEY);
 const describeLive = describe.skipIf(!hasKey);
@@ -213,4 +213,40 @@ describeLive("live Vexcel API (needs VEXCEL_API_KEY)", () => {
     expect(imagery.collection).toBe("us-tx-houston-2026");
     expect(imagery.imageUrl.startsWith("/api/")).toBe(true);
   }, 60_000);
+});
+
+/** Stubbed transport and key, so this runs in CI. */
+describe("getAerialImagery metadata cache", () => {
+  // Live tests earlier in this file may have filled the cache for the same property.
+  beforeEach(() => clearAerialMetadataCache());
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    clearAerialMetadataCache();
+  });
+
+  test("reads each image's metadata once, then reuses it without re-downloading", async () => {
+    vi.stubEnv("VEXCEL_API_KEY", "test-key-not-real");
+    const spy = vi.fn(async () => new Response(ORTHO_XMP, { status: 200, headers: { "content-type": "image/jpeg" } }));
+    vi.stubGlobal("fetch", spy);
+
+    const first = await getAerialImagery(TRAVIS.id, TRAVIS.lat, TRAVIS.lon, "ortho", null);
+    const second = await getAerialImagery(TRAVIS.id, TRAVIS.lat, TRAVIS.lon, "ortho", null);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(second.collection).toBe("us-tx-houston-2026");
+    expect(second.captureDate).toEqual(first.captureDate);
+
+    // A different view is a different image.
+    await getAerialImagery(TRAVIS.id, TRAVIS.lat, TRAVIS.lon, "oblique", "north");
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  test("does not cache a failure", async () => {
+    vi.stubEnv("VEXCEL_API_KEY", "test-key-not-real");
+    const spy = vi.fn(async () => new Response("no", { status: 503 }));
+    vi.stubGlobal("fetch", spy);
+    await expect(getAerialImagery(TRAVIS.id, TRAVIS.lat, TRAVIS.lon, "ortho", null)).rejects.toThrow(/503/);
+    await expect(getAerialImagery(TRAVIS.id, TRAVIS.lat, TRAVIS.lon, "ortho", null)).rejects.toThrow(/503/);
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
 });

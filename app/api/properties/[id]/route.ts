@@ -1,7 +1,7 @@
 // OWNER: Developer 2 — DATA-03. Contract: PropertyDetailResponse (lib/contracts/api.ts)
 import type { AerialImagery, MatterportModel } from "@/lib/contracts";
 import { getMatterportModel } from "@/lib/data/matterport";
-import { getProperty } from "@/lib/data/properties";
+import { getProperty, getSpaces } from "@/lib/data/properties";
 import { getCurrentTenants } from "@/lib/data/tenants";
 import { getAerialImagery } from "@/lib/data/vexcel";
 import { apiError } from "@/lib/http";
@@ -39,10 +39,17 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/properties/
   // metadata is cached for an hour. Vexcel is one upstream call per view, in parallel with the
   // models and with each other, because the imagery is the slow part and the viewer needs the
   // capture date and GSD to label it honestly.
+  // Each scan keeps its CoStar association (which advertised suite, which caption), so the tour
+  // says "Scan of advertised Suite 100" instead of calling it an unmatched building scan.
+  const links = new Map(
+    (await getSpaces(propertyId)).flatMap((space) =>
+      space.matterport ? [[space.matterport.modelId, { caption: space.matterport.caption, matchedSuite: space.suite }] as const] : [],
+    ),
+  );
   const [models, ortho, oblique, currentTenants] = await Promise.all([
     Promise.all(
       property.matterportModelIds.map((modelId) =>
-        bestEffort(`matterport ${modelId}`, () => getMatterportModel(modelId, { propertyId })),
+        bestEffort(`matterport ${modelId}`, () => getMatterportModel(modelId, { propertyId, ...links.get(modelId) })),
       ),
     ),
     bestEffort("vexcel ortho", () =>
@@ -56,7 +63,18 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/properties/
 
   return Response.json({
     property,
-    matterportModels: models.filter((model): model is MatterportModel => model !== null),
+    // Advertised suites first, in suite order (Suite 100 before 104), then unmatched building scans.
+    matterportModels: models
+      .filter((model): model is MatterportModel => model !== null)
+      .sort((a, b) =>
+        a.matchedSuite === b.matchedSuite
+          ? 0
+          : a.matchedSuite === null
+            ? 1
+            : b.matchedSuite === null
+              ? -1
+              : a.matchedSuite.localeCompare(b.matchedSuite, "en", { numeric: true }),
+      ),
     aerial: [ortho, oblique].filter((image): image is AerialImagery => image !== null),
     currentTenants,
   });
